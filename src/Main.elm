@@ -25,36 +25,32 @@ main =
 
 init : (Model, Cmd Msg)
 init =
-    let formation442 : List (Int, Int)
-        formation442 = [
+    let formation442 : Array (Int, Int)
+        formation442 = Array.fromList [
             (2, 5), -- gk
             (0, 4), (1, 4), (3, 4), (4, 4),
             (0, 2), (1, 2), (3, 2), (4, 2),
             (1, 0), (3, 0) ]
-        teams : Dict TeamId Team
-        teams = Dict.fromList[
-            (1, {
-                    id=1,
-                    name="Rangers",
-                    players=Array.fromList [
-                        { name="Semen", skill=9 },
-                        { name="Smith", skill=4 },
-                        { name="Johnson", skill=2 },
-                        { name="Jones", skill=2 },
-                        { name="Morton", skill=2 },
-                        { name="Robertson", skill=2 },
-                        { name="McArse", skill=2 },
-                        { name="McCoist", skill=2 },
-                        { name="Lee", skill=2 },
-                        { name="Beckham", skill=2 },
-                        { name="Poohat", skill=2 }
-                    ],
-                    formation=formation442
-                }
-            ),
-            (2, {id=2, name="Celtic", players=Array.empty, formation=formation442})
-        ]
-        model = { ourTeamId=1, tabTeamSelectedPlayer=Nothing, tab = TabTeam, teams = teams }
+        team : Team
+        team = {
+            id=1,
+            name="Rangers",
+            players=Array.fromList [
+                { name="Semen", skill=9 },
+                { name="Smith", skill=4 },
+                { name="Johnson", skill=2 },
+                { name="Jones", skill=2 },
+                { name="Morton", skill=2 },
+                { name="Robertson", skill=2 },
+                { name="McArse", skill=2 },
+                { name="McCoist", skill=2 },
+                { name="Lee", skill=2 },
+                { name="Beckham", skill=2 },
+                { name="Poohat", skill=2 }
+            ],
+            formation=formation442
+        }
+        model = { ourTeamId=1, tabTeamSelectedPlayer=Nothing, tab = TabTeam, ourTeam = team }
     in
         (model, Cmd.none)
 
@@ -98,9 +94,7 @@ view model =
     [ div [] [tabs model]
     , div [style [("clear", "both"), ("margin", "3em 0 0 0")]] [
         case model.tab of
-          TabTeam -> case Dict.get model.ourTeamId model.teams of
-                     Just team -> Html.map TeamViewMsg <| TeamView.teamTab model team
-                     Nothing -> text "Error: unknown teamId"
+          TabTeam -> Html.map TeamViewMsg <| TeamView.teamTab model model.ourTeam
           TabLeagueTables -> leagueTableTab model premierLeague
           _ -> text ""
       ]
@@ -108,20 +102,20 @@ view model =
 
 leagueTableTab : Model -> LeagueTable -> Html Msg
 leagueTableTab model league =
-  let recordToTableLine record =
-    Html.tr [] (case Dict.get record.teamId model.teams of
-      Nothing -> [Html.td [] [text "Error. Unknown teamId"]]
-      Just team -> [
-        Html.td [] [text team.name]
-      , Html.td [] [record.won + record.drawn + record.lost |> toString |> text]
-      , Html.td [] [record.won |> toString |> text]
-      , Html.td [] [record.drawn |> toString |> text]
-      , Html.td [] [record.lost |> toString |> text]
-      , Html.td [] [record.goalsFor |> toString |> text]
-      , Html.td [] [record.goalsAgainst |> toString |> text]
-      , Html.td [] [record.goalsFor + record.goalsAgainst |> toString |> text]
-      , Html.td [] [calcPoints record |> toString |> text]
-      ])
+    let recordToTableLine record =
+        Html.tr
+            [] 
+            [
+                Html.td [] [text record.name]
+              , Html.td [] [record.won + record.drawn + record.lost |> toString |> text]
+              , Html.td [] [record.won |> toString |> text]
+              , Html.td [] [record.drawn |> toString |> text]
+              , Html.td [] [record.lost |> toString |> text]
+              , Html.td [] [record.goalsFor |> toString |> text]
+              , Html.td [] [record.goalsAgainst |> toString |> text]
+              , Html.td [] [record.goalsFor + record.goalsAgainst |> toString |> text]
+              , Html.td [] [calcPoints record |> toString |> text]
+            ]
   in div [] [
       Html.h2 [] [text <| league.name],
       Html.table [tableStyle] (

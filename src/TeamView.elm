@@ -12,10 +12,15 @@ import Svg.Attributes exposing (..)
 import Model exposing (..)
 import Styles exposing (..)
 
-type Msg = SelectPlayer (Maybe Int)
+type Msg = SelectPlayer (Maybe Int) | MovePosition (Int, Int)
 
 pitchX = 812
 pitchY = 1280
+
+-- All pitch positions except goalkeeper. i dunno why I don't write it out as a literal...
+-- [(0,0),(0,1),(0,2),(0,3),(0,4),(1,0),(1,1),(1,2),(1,3),(1,4),(2,0),(2,1),(2,2),(2,3),(2,4),(3,0),(3,1),(3,2),(3,3),(3,4),(4,0),(4,1),(4,2),(4,3),(4,4)]
+movablePitchPositions : List (Int, Int)
+movablePitchPositions = List.concat <| List.map (\x -> List.map (\y -> (x,y)) [0,1,2,3,4]) [0,1,2,3,4]
 
 teamTab : Model -> Team -> Html Msg
 teamTab model team =
@@ -44,16 +49,50 @@ teamTab model team =
             Svg.svg
                 [Svg.Attributes.width "100%", Svg.Attributes.height "100%", viewBox "0 0 812 1280" ]
                 ([ 
-                -- Svg.rect [ x "10", y "10", Svg.Attributes.width "100", Svg.Attributes.height "100", rx "15", ry "15" ] [],
-                Svg.image
-                    [ Svg.Events.onClick <| SelectPlayer Nothing,
-                      Svg.Attributes.width "100%", Svg.Attributes.height "100%", Svg.Attributes.xlinkHref "pitch.png" ]
-                    []
-                ]
+                    -- Svg.rect [ x "10", y "10", Svg.Attributes.width "100", Svg.Attributes.height "100", rx "15", ry "15" ] [],
+                    Svg.image
+                        [ Svg.Events.onClick <| SelectPlayer Nothing,
+                          Svg.Attributes.width "100%", Svg.Attributes.height "100%", Svg.Attributes.xlinkHref "pitch.png" ]
+                        []
+                ] ++
+                -- players
+                (Array.toList <| Array.indexedMap (\i (x,y) -> playerOnPitch model team i x y) team.formation)
                 ++
-                List.indexedMap (\i (x,y) -> playerOnPitch model team i x y) team.formation
-                )
+                -- pitch positions unused by our formation
+                case model.tabTeamSelectedPlayer of
+                    Nothing -> []
+                    Just 0 -> [] -- can't move goalkeeper
+                    Just _ ->
+                        List.map
+                            (\(x, y) ->
+                                    -- XXX why doesn't Array.member exist!
+                                    if List.member (x, y) <| Array.toList team.formation
+                                    then Svg.text ""
+                                    else emptyPitchPosition (x, y)
+                            )
+                            movablePitchPositions
+                        )
         ]
+
+positionCircleRadius = 75
+
+pitchPosPixelPos : (Int, Int) -> (Float, Float)
+pitchPosPixelPos (x, y) =
+    let
+        xpadding = 100.0
+        ypadding = 250.0
+        xinc = (pitchX - 2*xpadding) / 4
+        yinc = (pitchY - 2*ypadding) / 4.3
+    in
+        (xpadding + (toFloat x)*xinc, ypadding + (toFloat y)*yinc)
+
+emptyPitchPosition : (Int, Int) -> Svg.Svg Msg
+emptyPitchPosition (x, y) =
+    let
+        (xpos, ypos) = pitchPosPixelPos (x, y)
+    in
+        Svg.circle [ Svg.Events.onClick (MovePosition (x, y)),
+                     cx (toString xpos), cy (toString ypos), r <| toString positionCircleRadius, fill "black", fillOpacity "0.1" ] []
 
 playerOnPitch : Model -> Team -> Int -> Int -> Int -> Svg.Svg Msg
 playerOnPitch model team playerIdx x y =
@@ -66,19 +105,22 @@ playerOnPitch model team playerIdx x y =
         textAtPlayerPos : (String, String) -> Int -> Int -> Svg.Svg Msg
         textAtPlayerPos (str, color) x y =
             let
-                xpadding = 100.0
-                ypadding = 250.0
-                xinc = (pitchX - 2*xpadding) / 4
-                yinc = (pitchY - 2*ypadding) / 4.3
-                xpos = xpadding + (toFloat x)*xinc
+                (xpos, ypos) = pitchPosPixelPos (x, y)
             in
-                Svg.text_
-                    [ Svg.Events.onClick (SelectPlayer (Just playerIdx)),
-                      Svg.Attributes.textAnchor "middle", fill color,
-                      Svg.Attributes.x (toString xpos), Svg.Attributes.y (toString (ypadding + (toFloat y)*yinc)), Svg.Attributes.fontSize "30" ]
-                    [
-                        Svg.tspan [Svg.Attributes.x <|toString xpos, dy "0"] [Svg.text <| toString (playerIdx+1) ],
-                        Svg.tspan [Svg.Attributes.x <|toString xpos, dy "40"] [Svg.text str ]
+                Svg.g
+                    []
+                    [ Svg.circle
+                        [ Svg.Events.onClick (SelectPlayer (Just playerIdx)),
+                          cx (toString xpos), cy (toString ypos), r <| toString positionCircleRadius, fill "black", fillOpacity "0.1" ]
+                        []
+                    , Svg.text_
+                        [ Svg.Events.onClick (SelectPlayer (Just playerIdx)),
+                          Svg.Attributes.textAnchor "middle", fill color,
+                          Svg.Attributes.x (toString xpos), Svg.Attributes.y (toString ypos), Svg.Attributes.fontSize "30" ]
+                        [
+                            Svg.tspan [Svg.Attributes.x <|toString xpos, dy "0"] [Svg.text <| toString (playerIdx+1) ],
+                            Svg.tspan [Svg.Attributes.x <|toString xpos, dy "40"] [Svg.text str ]
+                        ]
                     ]
     in
         textAtPlayerPos label x y
@@ -89,6 +131,20 @@ update msg model =
     case msg of
         SelectPlayer (Just p) -> applySelectPlayer model p
         SelectPlayer Nothing -> { model | tabTeamSelectedPlayer = Nothing }
+        -- move selected player to new position
+        MovePosition pos ->
+            case model.tabTeamSelectedPlayer of
+                Nothing -> model
+                Just playerIdx -> { model | ourTeam = movePlayerPosition model.ourTeam playerIdx pos
+                                          , tabTeamSelectedPlayer = Nothing }
+
+movePlayerPosition : Team -> Int -> (Int, Int) -> Team
+movePlayerPosition team playerIdx pos =
+    -- can't move the goalkeeper!
+    if playerIdx == 0 then
+        team
+    else
+        { team | formation = Array.set playerIdx pos team.formation }
 
 applySelectPlayer : Model -> Int -> Model
 applySelectPlayer model p =
@@ -97,8 +153,8 @@ applySelectPlayer model p =
     Just q -> if p == q then
         { model | tabTeamSelectedPlayer = Nothing }
       else
-        { model | tabTeamSelectedPlayer = Just p,
-                  teams = Dict.insert model.ourTeamId (swapPlayerPositions (ourTeam model) p q) model.teams
+        { model | tabTeamSelectedPlayer = Nothing,
+                  ourTeam = swapPlayerPositions (model.ourTeam) p q
         }
 
 arrayDirtyGet : Int -> Array a -> a
