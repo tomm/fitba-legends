@@ -3,15 +3,14 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" type="text/css" href="style.css">
     </head>
-    <body style="padding: 0; margin: 0; font-family: Sans; font-size: 120%;">
+    <body>
         <div id="main"></div>
         <script src="main.js"></script>
         <script>
             var node = document.getElementById('main');
             var app = Elm.Main.embed(node);
-            // Note: if your Elm module is named "MyThing.Root" you
-            // would call "Elm.MyThing.Root.embed(node)" instead.
         </script>
     </body>
 </html>

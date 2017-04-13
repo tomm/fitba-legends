@@ -9,7 +9,7 @@ type UiTab = TabTeam | TabLeagueTables | TabFixtures | TabFinances
 
 type alias Model = { ourTeamId: TeamId, tabTeamSelectedPlayer: Maybe Int, tab: UiTab, teams : Dict Int Team }
 type alias TeamId = Int
-type alias Team = { id: TeamId, name: String, players: Array Player }
+type alias Team = { id: TeamId, name: String, players: Array Player, formation: List (Int, Int) }
 
 type alias SeasonRecord = { teamId: TeamId, played: Int, won: Int, drawn: Int, lost: Int, goalsFor: Int, goalsAgainst: Int }
 type alias LeagueTable = { name: String, record: List SeasonRecord }

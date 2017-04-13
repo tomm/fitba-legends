@@ -5,11 +5,17 @@ import Dict exposing (Dict)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
 import Html exposing (Html, Attribute, div, input, text, ul, li, button)
+import Svg
+import Svg.Events
+import Svg.Attributes exposing (..)
 
 import Model exposing (..)
 import Styles exposing (..)
 
 type Msg = SelectPlayer (Maybe Int)
+
+pitchX = 812
+pitchY = 1280
 
 teamTab : Model -> Team -> Html Msg
 teamTab model team =
@@ -18,20 +24,65 @@ teamTab model team =
           Nothing -> False
       playerToDiv i p =
         let clickAction = onClick (SelectPlayer <| Just i)
-        in Html.tr [if isActive i then activeTableRowStyle else style []] [
+        in Html.tr [if isActive i then activeTableRowStyle else Html.Attributes.style []] [
              Html.td [clickAction] [text <| toString <| i + 1 ]
            , Html.td [clickAction] [text <| p.name]
            , Html.td [clickAction] [text <| toString <| p.skill]
         ]
-  in div [] [
-      Html.h2 [] [team.name |> text],
-      Html.table [tableStyle] <|
-      (Html.tr [] [Html.td [] [text "Pos."]
-                 , Html.td [] [text "Name"]
-                 , Html.td [] [text "Skill"]]) ::
-      (List.indexedMap playerToDiv (Array.toList team.players)),
-      Html.img [src "pitch.png", style [("width", "100%")]] []
-      ]
+    in
+        div [] [
+            Html.h2 [] [team.name |> text],
+            Html.table
+                [tableStyle] <|
+                (
+                    Html.tr [] [Html.th [] [text "Pos."],
+                    Html.th [] [text "Name"],
+                    Html.th [] [text "Skill"]]
+                ) ::
+                (List.indexedMap playerToDiv (Array.toList team.players)),
+
+            Svg.svg
+                [Svg.Attributes.width "100%", Svg.Attributes.height "100%", viewBox "0 0 812 1280" ]
+                ([ 
+                -- Svg.rect [ x "10", y "10", Svg.Attributes.width "100", Svg.Attributes.height "100", rx "15", ry "15" ] [],
+                Svg.image
+                    [ Svg.Events.onClick <| SelectPlayer Nothing,
+                      Svg.Attributes.width "100%", Svg.Attributes.height "100%", Svg.Attributes.xlinkHref "pitch.png" ]
+                    []
+                ]
+                ++
+                List.indexedMap (\i (x,y) -> playerOnPitch model team i x y) team.formation
+                )
+        ]
+
+playerOnPitch : Model -> Team -> Int -> Int -> Int -> Svg.Svg Msg
+playerOnPitch model team playerIdx x y =
+    let maybePlayer = Array.get playerIdx team.players
+        label =
+            case maybePlayer of
+                Nothing -> ("Empty!", "red")
+                Just player -> (player.name, if model.tabTeamSelectedPlayer == Just playerIdx then "#8080ff" else "white")
+
+        textAtPlayerPos : (String, String) -> Int -> Int -> Svg.Svg Msg
+        textAtPlayerPos (str, color) x y =
+            let
+                xpadding = 100.0
+                ypadding = 250.0
+                xinc = (pitchX - 2*xpadding) / 4
+                yinc = (pitchY - 2*ypadding) / 4.3
+                xpos = xpadding + (toFloat x)*xinc
+            in
+                Svg.text_
+                    [ Svg.Events.onClick (SelectPlayer (Just playerIdx)),
+                      Svg.Attributes.textAnchor "middle", fill color,
+                      Svg.Attributes.x (toString xpos), Svg.Attributes.y (toString (ypadding + (toFloat y)*yinc)), Svg.Attributes.fontSize "30" ]
+                    [
+                        Svg.tspan [Svg.Attributes.x <|toString xpos, dy "0"] [Svg.text <| toString (playerIdx+1) ],
+                        Svg.tspan [Svg.Attributes.x <|toString xpos, dy "40"] [Svg.text str ]
+                    ]
+    in
+        textAtPlayerPos label x y
+
 
 update : Msg -> Model -> Model
 update msg model =

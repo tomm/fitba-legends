@@ -13,5 +13,4 @@ activeTableRowStyle : Attribute a
 activeTableRowStyle = style [("backgroundColor", "blue")]
 
 tableStyle : Attribute a
-tableStyle = style [("width", "100%"), ("borderCollapse", "collapse")]
-
+tableStyle = style [("width", "100%"), ("borderCollapse", "collapse"), ("overflow-x", "hidden"), ("marginBottom", "1em")]

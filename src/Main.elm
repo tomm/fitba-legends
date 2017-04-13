@@ -25,14 +25,34 @@ main =
 
 init : (Model, Cmd Msg)
 init =
-    let teams : Dict TeamId Team
+    let formation442 : List (Int, Int)
+        formation442 = [
+            (2, 5), -- gk
+            (0, 4), (1, 4), (3, 4), (4, 4),
+            (0, 2), (1, 2), (3, 2), (4, 2),
+            (1, 0), (3, 0) ]
+        teams : Dict TeamId Team
         teams = Dict.fromList[
-            (1, {id=1, name="Rangers", players=Array.fromList [
-                { name="A", skill=9 },
-                { name="B", skill=4 },
-                { name="C", skill=2 }
-            ]}),
-            (2, {id=2, name="Celtic", players=Array.empty})
+            (1, {
+                    id=1,
+                    name="Rangers",
+                    players=Array.fromList [
+                        { name="Semen", skill=9 },
+                        { name="Smith", skill=4 },
+                        { name="Johnson", skill=2 },
+                        { name="Jones", skill=2 },
+                        { name="Morton", skill=2 },
+                        { name="Robertson", skill=2 },
+                        { name="McArse", skill=2 },
+                        { name="McCoist", skill=2 },
+                        { name="Lee", skill=2 },
+                        { name="Beckham", skill=2 },
+                        { name="Poohat", skill=2 }
+                    ],
+                    formation=formation442
+                }
+            ),
+            (2, {id=2, name="Celtic", players=Array.empty, formation=formation442})
         ]
         model = { ourTeamId=1, tabTeamSelectedPlayer=Nothing, tab = TabTeam, teams = teams }
     in
@@ -62,11 +82,11 @@ update msg model =
 
 tabs : Model -> Html Msg
 tabs model =
-  let liStyle = style[("display", "block"), ("float", "left"), ("width", "25%")]
+  let liStyle = style[("display", "block"), ("float", "left"), ("width", "25%"), ("border", "0")]
       tabStyle tab = if model.tab == tab then activeTabStyle else inactiveTabStyle
       tabLabels = [(TabTeam, "Team"), (TabLeagueTables, "Tables"), (TabFixtures, "Fixtures"), (TabFinances, "Finances")]
 
-  in ul [style [("listStyleType", "none"), ("padding", "0 0 1em 0"), ("margin", "0")]]
+  in ul [style [("opacity", "0.9"), ("listStyleType", "none"), ("width", "100%"), ("padding", "0 0 1em 0"), ("top", "0"), ("left", "0"), ("margin", "0"), ("position", "fixed")]]
       (List.map (\(tab, label) ->
           li [liStyle] [button [onClick (ChangeTab tab), tabStyle tab] [text label]]
         )
@@ -76,13 +96,13 @@ view : Model -> Html Msg
 view model =
   div []
     [ div [] [tabs model]
-    , div [style [("clear", "both"), ("margin", "2em 0 0 0")]] [
+    , div [style [("clear", "both"), ("margin", "3em 0 0 0")]] [
         case model.tab of
           TabTeam -> case Dict.get model.ourTeamId model.teams of
                      Just team -> Html.map TeamViewMsg <| TeamView.teamTab model team
                      Nothing -> text "Error: unknown teamId"
           TabLeagueTables -> leagueTableTab model premierLeague
-          _ -> text "Arse"
+          _ -> text ""
       ]
     ]
 
@@ -106,15 +126,15 @@ leagueTableTab model league =
       Html.h2 [] [text <| league.name],
       Html.table [tableStyle] (
       (Html.tr [] [
-        Html.td [] [text "Team"]
-      , Html.td [] [text "Played"]
-      , Html.td [] [text "Won"]
-      , Html.td [] [text "Drawn"]
-      , Html.td [] [text "Lost"]
-      , Html.td [] [text "GF"]
-      , Html.td [] [text "GA"]
-      , Html.td [] [text "GD"]
-      , Html.td [] [text "Points"]
+        Html.th [] [text "Team"]
+      , Html.th [] [text "Played"]
+      , Html.th [] [text "Won"]
+      , Html.th [] [text "Drawn"]
+      , Html.th [] [text "Lost"]
+      , Html.th [] [text "GF"]
+      , Html.th [] [text "GA"]
+      , Html.th [] [text "GD"]
+      , Html.th [] [text "Points"]
       ]) ::
       (List.map recordToTableLine (sortLeague league.record))
     )]
