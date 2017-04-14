@@ -136,7 +136,7 @@ view : Model -> Html Msg
 view model =
   div []
     [ div [] [tabs model]
-    , div [style [("clear", "both"), ("margin", "3em 0 0 0")]] [
+    , div [style [("clear", "both"), ("margin", "4em 0 0 0")]] [
         case model.tab of
           TabTeam -> Html.map TeamViewMsg <| TeamView.view model model.ourTeam
           TabLeagueTables -> leagueTableTab model premierLeague

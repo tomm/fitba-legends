@@ -42,7 +42,9 @@ matchView game watching =
         matchMinute = case maybeEv of
             Nothing -> watching.timePoint / Time.second
             Just ev -> (ev.timestamp - game.start) / Time.second
-        matchTimeDisplay = div [] [text <| (++) "Time: " <| toString <| matchMinute, text ":00"]
+        matchTimeDisplay = div
+            [Html.Attributes.style [("float", "right")]]
+            [text <| (++) "Time: " <| toString <| matchMinute, text ":00"]
     in
         div []
             [
