@@ -1,4 +1,4 @@
-module TeamView exposing (teamTab, update, Msg)
+module TeamView exposing (view, update, Msg)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -22,8 +22,8 @@ pitchY = 1280
 movablePitchPositions : List (Int, Int)
 movablePitchPositions = List.concat <| List.map (\x -> List.map (\y -> (x,y)) [0,1,2,3,4]) [0,1,2,3,4]
 
-teamTab : Model -> Team -> Html Msg
-teamTab model team =
+view : Model -> Team -> Html Msg
+view model team =
   let isActive i = case model.tabTeamSelectedPlayer of
           Just j -> j == i
           Nothing -> False

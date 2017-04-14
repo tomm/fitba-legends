@@ -3,12 +3,23 @@ import Array exposing (Array)
 import Dict exposing (Dict)
 import Date exposing (Date)
 import Debug
+import Time exposing (Time)
 
 -- MODEL
 
-type UiTab = TabTeam | TabLeagueTables | TabFixtures | TabFinances
+type alias WatchingGame = { id: GameId, timePoint: Time }
 
-type alias Model = { ourTeamId: TeamId, tabTeamSelectedPlayer: Maybe Int, tab: UiTab, ourTeam : Team }
+type UiTab = TabTeam | TabLeagueTables | TabFixtures (Maybe WatchingGame) | TabFinances
+
+type alias Model = {
+    ourTeamId: TeamId,
+    tabTeamSelectedPlayer: Maybe Int,
+    tab: UiTab,
+    ourTeam : Team,
+    fixtures: List Fixture,
+    games: Dict GameId Game
+}
+
 type alias TeamId = Int
 type alias Team = { id: TeamId, name: String, players: Array Player, formation: Array (Int, Int) }
 
@@ -23,7 +34,10 @@ premierLeague = { name="Scottish Premier Division", record=[
 
 type alias Player = { name: String, skill: Int }
 
-----type GameEventType = Boring | HomeGoal | AwayGoal;
-----type alias GameEvent = { type_: GameEventType, timestamp: Date, message: String, ballPos: (Int, Int) }
-----type alias GameId = Int
-----type alias Game = { id: GameId, homeTeam: Team, awayTeam: Team, events: List GameEvent }
+type alias GameId = Int
+type GameEventType = Boring | HomeGoal | AwayGoal | EndOfGame
+type alias GameEvent = { id: GameId, type_: GameEventType, timestamp: Time, message: String, ballPos: (Int, Int) }
+type alias Game = { id: GameId, homeTeam: Team, awayTeam: Team, start: Time, events: List GameEvent }
+
+type FixtureStatus = Scheduled | Played { homeGoals: Int, awayGoals: Int }
+type alias Fixture = { id: GameId, homeName: String, awayName: String, start: Time, status: FixtureStatus }
