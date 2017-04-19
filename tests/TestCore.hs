@@ -11,7 +11,7 @@ import System.Directory (removeFile)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO.Error (isDoesNotExistError)
 
-import DB (Conn)
+import qualified DB
 import Schema
 import qualified PopulateSchema
 import qualified Settings
@@ -28,7 +28,6 @@ main = do
     testSettings
     testPopulateSchema
 
-dbTest :: DB.Conn b -> IO b
 dbTest m = do
     -- Keep a test.db file lying around at the end of tests, so that we
     -- can examine the DB in the case of failure
@@ -57,4 +56,4 @@ testPopulateSchema = do
     putStrLn "testPopulateSchema..."
     dbTest $ do
         PopulateSchema.populate
-        throw $ TestFailure "FUCK"
+        --throw $ TestFailure "FUCK"

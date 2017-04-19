@@ -8,13 +8,13 @@ import Database.Persist.Sqlite
 import Data.Time.Clock as Clock
 import Data.Time.Calendar as Calendar
 
-import DB (Conn)
+import qualified DB (Con, MonadDB)
 import Schema
 import qualified Utils
 import qualified Settings
 import qualified Types
 
-populate :: DB.Conn ()
+populate :: DB.MonadDB a => DB.Con a ()
 populate = do
     league1 <- insert $ League "1st Division Season 1922"
     league2 <- insert $ League "2nd Division Season 1922"
@@ -53,12 +53,12 @@ populate = do
 
     return ()
 
-getTeamsInLeague :: LeagueId -> DB.Conn [Entity Team]
+getTeamsInLeague :: DB.MonadDB a => LeagueId -> DB.Con a [Entity Team]
 getTeamsInLeague leagueId = do
     teamsLeague <- selectList [TeamLeagueLeagueId ==. leagueId] []
     selectList [TeamId <-. map (teamLeagueTeamId . entityVal) (teamsLeague :: [Entity TeamLeague])] []
 
-makeFixtures :: LeagueId -> DB.Conn ()
+makeFixtures :: DB.MonadDB a => LeagueId -> DB.Con a ()
 makeFixtures leagueId = do
     teams <- getTeamsInLeague leagueId
     --liftIO $ print $ map entityVal (teams :: [Entity Team])
@@ -77,7 +77,7 @@ makeFixtures leagueId = do
     mapM_ (makeDayOfFixtures startDate) $ zip [0..] $ scheduleDays allMatchesShuffled
 
     where
-        makeDayOfFixtures :: Calendar.Day -> (Int, [(Entity Team, Entity Team)]) -> DB.Conn ()
+        makeDayOfFixtures :: DB.MonadDB a => Calendar.Day -> (Int, [(Entity Team, Entity Team)]) -> DB.Con a ()
         makeDayOfFixtures startDate (dayNum, matches) = do
             let startTime = 10*60
                 secondsBetweenGames = 12*60 `quot` max 1 (length matches - 1)

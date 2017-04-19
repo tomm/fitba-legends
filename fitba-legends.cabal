@@ -24,6 +24,8 @@ Test-Suite test-core
                  persistent-sqlite >= 2.6,
                  persistent-template >= 2.5,
                  persistent >= 2.6,
+                 yesod >= 1.4,
+                 aeson,
                  random,
                  array,
                  transformers,
@@ -36,10 +38,28 @@ Test-Suite test-core
                  time
   default-language: Haskell2010
 
-executable fitba-legends
-  main-is:             Main.hs
+executable webserver
+  main-is:             ServerMain.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends: base >=4.9 && <4.10, esqueleto >=2.5 && <2.6, persistent-sqlite >= 2.6
+  build-depends: base >=4.9 && <4.10,
+                 esqueleto >=2.5 && <2.6,
+                 persistent-sqlite >= 2.6,
+                 persistent-template >= 2.5,
+                 persistent >= 2.6,
+                 yesod >= 1.4,
+                 yesod-static >= 1.5,
+                 yesod-persistent >= 1.4,
+                 aeson,
+                 random,
+                 array,
+                 transformers,
+                 exceptions,
+                 monad-logger,
+                 resourcet,
+                 resourcet,
+                 directory,
+                 text,
+                 time
   hs-source-dirs:      src
   default-language:    Haskell2010
