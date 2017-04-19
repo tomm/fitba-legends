@@ -13,6 +13,7 @@ import System.IO.Error (isDoesNotExistError)
 
 import DB (Conn)
 import Schema
+import qualified PopulateSchema
 import qualified Settings
 
 type IOTest = IO ()
@@ -23,8 +24,9 @@ instance Exception TestFailure
 main :: IO ()
 main = do
     testCreateSchema
-    testGetLeague
+    --testGetLeague
     testSettings
+    testPopulateSchema
 
 dbTest :: DB.Conn b -> IO b
 dbTest m = do
@@ -50,24 +52,9 @@ testSettings =
 assertEq msg b a = unless (a == b) (throw $ TestFailure $ "FAIL: " ++ msg ++ ": " ++ show a ++ " /= " ++ show b)
 assertNe msg b a = unless (a /= b) (throw $ TestFailure $ "FAIL: " ++ msg ++ ": " ++ show a ++ " == " ++ show b)
 
-testGetLeague :: IOTest
-testGetLeague =
+testPopulateSchema :: IOTest
+testPopulateSchema = do
+    putStrLn "testPopulateSchema..."
     dbTest $ do
-        league1Id <- insert $ League "test league 1"
-        league2Id <- insert $ League "test league 2"
-
-        team1 <- insert $ Team "team 1" league1Id
-        team2 <- insert $ Team "team 2" league1Id
-        team3 <- insert $ Team "team 3" league1Id
-        team4 <- insert $ Team "team 4" league2Id
-
-        teams <- getLeagueTableOrdered league1Id
-
-        liftIO $ print $ map teamName teams
-
-        assertEq "getLeagueTableOrdered" (map teamName teams) ["team 1", "team 2", "team 3"]
-
-getLeagueTableOrdered :: LeagueId -> DB.Conn [Team]
-getLeagueTableOrdered leagueId = do
-    teams <- selectList [TeamLeague ==. leagueId] []
-    return $ map entityVal (teams :: [Entity Team])
+        PopulateSchema.populate
+        throw $ TestFailure "FUCK"

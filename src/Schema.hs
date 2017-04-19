@@ -24,26 +24,33 @@ League
 
 Team
     name Text
-    league LeagueId
     --formation
+    deriving Show Eq
+
+TeamLeague
+    teamId TeamId
+    leagueId LeagueId
+    UniqueTeamLeague teamId leagueId
     deriving Show
 
 Player
-    team TeamId
+    teamId TeamId
     name Text
     skill Int
     deriving Show
 
 Game
-    season Season
-    homeTeam TeamId
-    awayTeam TeamId
+    leagueId LeagueId
+    homeTeamId TeamId
+    awayTeamId TeamId
     status Types.GameStatus
     start UTCTime
+    homeGoals Int default=0
+    awayGoals Int default=0
     deriving Show
 
 GameEvent
-    game GameId
+    gameId GameId
     type_ Types.GameEventType
     timestamp UTCTime
     message Text

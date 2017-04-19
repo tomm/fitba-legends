@@ -24,6 +24,8 @@ Test-Suite test-core
                  persistent-sqlite >= 2.6,
                  persistent-template >= 2.5,
                  persistent >= 2.6,
+                 random,
+                 array,
                  transformers,
                  exceptions,
                  monad-logger,
