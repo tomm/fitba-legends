@@ -20,6 +20,7 @@ type Season = Int
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 League
     name Text
+    isFinished Bool
     deriving Show
 
 Team

@@ -52,7 +52,7 @@ view model team =
                     -- Svg.rect [ x "10", y "10", Svg.Attributes.width "100", Svg.Attributes.height "100", rx "15", ry "15" ] [],
                     Svg.image
                         [ Svg.Events.onClick <| SelectPlayer Nothing,
-                          Svg.Attributes.width "100%", Svg.Attributes.height "100%", Svg.Attributes.xlinkHref "pitch.png" ]
+                          Svg.Attributes.width "100%", Svg.Attributes.height "100%", Svg.Attributes.xlinkHref "/static/pitch.png" ]
                         []
                 ] ++
                 -- players

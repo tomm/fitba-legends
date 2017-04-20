@@ -10,6 +10,9 @@ import Maybe exposing (withDefault)
 import Svg
 import Time
 import Date
+import Task
+import Http
+import Json.Decode as Json
 
 import Model exposing (..)
 import TeamView
@@ -72,12 +75,10 @@ init =
             formation=formation442
         }
         model = {
+            errorMsg = Nothing,
             ourTeamId=1, tabTeamSelectedPlayer=Nothing, tab = TabTeam, ourTeam = team1,
-            fixtures = [
-                { id=1, start=1492170407 * Time.second, homeName="Rangers", awayName="Celtic", status=Scheduled },
-                { id=2, start=1492174154 * Time.second, homeName="Celtic", awayName="Rangers",
-                  status=Played { homeGoals=1, awayGoals=0 } }
-            ],
+            fixtures = [],
+            leagueTables = [],
             games = Dict.fromList [
                 (2, {
                         id=2, homeTeam=team1, awayTeam=team2, start=1492174154 * Time.second, events=[
@@ -91,7 +92,7 @@ init =
             ]
         }
     in
-        (model, Cmd.none)
+        (model, Cmd.batch [getFixtures, getLeagueTables])
 
 
 -- SUBSCRIPTIONS
@@ -101,10 +102,68 @@ subscriptions model = Sub.batch [
         Time.every Time.second ClockTick
     ]
 
+
+-- HTTP
+
+getFixtures : Cmd Msg
+getFixtures =
+    Http.send UpdateFixtures (Http.get "/fixtures" decodeFixturesUrl)
+
+getLeagueTables : Cmd Msg
+getLeagueTables =
+    Http.send UpdateLeagueTables (Http.get "/tables" decodeTablesUrl)
+
+jsonStringToTime : Json.Decoder Time.Time
+jsonStringToTime =
+  Json.string
+    |> Json.andThen (\val ->
+        case Date.fromString val of
+          Err err -> Json.fail err
+          Ok d -> Json.succeed <| Date.toTime d)
+
+decodeFixturesUrl : Json.Decoder (List Fixture)
+decodeFixturesUrl =
+    Json.list (
+        Json.map5 Fixture
+            (Json.at ["gameId"] Json.int)
+            (Json.at ["homeName"] Json.string)
+            (Json.at ["awayName"] Json.string)
+            (Json.at ["start"] jsonStringToTime)
+            (Json.at ["status"] Json.string |> Json.andThen (\val ->
+                if val == "Scheduled" then
+                    Json.succeed Scheduled
+                else
+                    Json.succeed <| Played { homeGoals=999, awayGoals=-999 }
+            ))
+    )
+
+decodeTablesUrl : Json.Decoder (List LeagueTable)
+decodeTablesUrl =
+    Json.list (
+        Json.map2 LeagueTable
+            (Json.at ["name"] Json.string)
+            (Json.at ["record"] <| Json.list (
+                Json.map8 SeasonRecord
+                    (Json.at ["teamId"] Json.int)
+                    (Json.at ["name"] Json.string)
+                    (Json.at ["played"] Json.int)
+                    (Json.at ["won"] Json.int)
+                    (Json.at ["drawn"] Json.int)
+                    (Json.at ["lost"] Json.int)
+                    (Json.at ["goalsFor"] Json.int)
+                    (Json.at ["goalsAgainst"] Json.int)
+            ))
+    )
+
+--type alias Fixture = { id: GameId, homeName: String, awayName: String, start: Time, status: FixtureStatus }
+
 -- UPDATE
 
 type Msg
-  = ChangeTab UiTab | TeamViewMsg TeamView.Msg | ClockTick Time.Time | FixturesViewMsg FixturesView.Msg
+  = ChangeTab UiTab | TeamViewMsg TeamView.Msg | ClockTick Time.Time
+  | FixturesViewMsg FixturesView.Msg
+  | UpdateFixtures (Result Http.Error (List Fixture))
+  | UpdateLeagueTables (Result Http.Error (List LeagueTable))
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -117,6 +176,12 @@ update msg model =
         _ -> (model, Cmd.none)
     TeamViewMsg msg -> (TeamView.update msg model, Cmd.none)
     FixturesViewMsg msg -> (FixturesView.update msg model, Cmd.none)
+    UpdateFixtures result -> case result of
+        Ok fixtures -> ({ model | fixtures = fixtures }, Cmd.none)
+        Err error -> ({model | errorMsg = Just <| toString error}, Cmd.none)
+    UpdateLeagueTables result -> case result of
+        Ok tables -> ({ model | leagueTables = tables }, Cmd.none)
+        Err error -> ({model | errorMsg = Just <| toString error}, Cmd.none)
 
 -- VIEW
 
@@ -137,9 +202,10 @@ view model =
   div []
     [ div [] [tabs model]
     , div [style [("clear", "both"), ("margin", "4em 0 0 0")]] [
+        text <| Maybe.withDefault "" model.errorMsg,
         case model.tab of
           TabTeam -> Html.map TeamViewMsg <| TeamView.view model model.ourTeam
-          TabLeagueTables -> leagueTableTab model premierLeague
+          TabLeagueTables -> div [] (List.map (leagueTableTab model) model.leagueTables)
           TabFixtures maybeWatchingGame -> Html.map FixturesViewMsg <| FixturesView.view model maybeWatchingGame
           TabFinances -> text ""
       ]

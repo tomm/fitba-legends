@@ -24,7 +24,7 @@ view model maybeWatchingGame =
             ]
             Just watching -> [
                 h2 [] [text "Match Video"],
-                case Dict.get watching.id model.games of
+                case Dict.get watching.gameId model.games of
                     Nothing -> div [] [text "Game replay not available"]
                     Just game -> matchView game watching
             ]
@@ -68,7 +68,7 @@ drawPitch game maybeEv =
         [Svg.Attributes.width "100%", Svg.Attributes.height "100%", viewBox "0 0 812 515" ]
         ([ 
             Svg.image
-                [Svg.Attributes.width "100%", Svg.Attributes.height "100%", Svg.Attributes.xlinkHref "pitch_h.png" ]
+                [Svg.Attributes.width "100%", Svg.Attributes.height "100%", Svg.Attributes.xlinkHref "/static/pitch_h.png" ]
                 []
         ] ++
             (case maybeEv of
@@ -107,7 +107,7 @@ drawBall (x, y) =
 fixturesTable : Model -> Html Msg
 fixturesTable model =
     let fixtureRow fixture =
-            tr [onClick (Watch fixture.id)] [
+            tr [onClick (Watch fixture.gameId)] [
                 td [] [text (fixture.homeName ++ " - " ++ fixture.awayName)],
                 td [] [text <| Utils.timeFormat fixture.start],
                 td [] [resultText fixture ]
@@ -132,4 +132,4 @@ fixturesTable model =
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        Watch gameId -> { model | tab = TabFixtures (Just { id=gameId, timePoint=0.0 }) }
+        Watch gameId -> { model | tab = TabFixtures (Just { gameId=gameId, timePoint=0.0 }) }

@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module PopulateSchema where
+module Core where
 
 import System.Random (newStdGen)
 import Control.Monad (guard)
@@ -7,6 +7,7 @@ import Control.Monad.IO.Class (liftIO)
 import Database.Persist.Sqlite
 import Data.Time.Clock as Clock
 import Data.Time.Calendar as Calendar
+import qualified Data.List (sortBy)
 
 import qualified DB (Con, MonadDB)
 import Schema
@@ -14,10 +15,45 @@ import qualified Utils
 import qualified Settings
 import qualified Types
 
-populate :: DB.MonadDB a => DB.Con a ()
-populate = do
-    league1 <- insert $ League "1st Division Season 1922"
-    league2 <- insert $ League "2nd Division Season 1922"
+-- ordered descending (ie !!0 is in first place)
+getLeagueTable :: DB.MonadDB a => LeagueId -> DB.Con a [(Entity Team, Types.TournRecord)]
+getLeagueTable leagueId = do
+    -- should replace this all with a big esqueleto query
+    teams <- getTeamsInLeague leagueId
+    points <- mapM (calcTeamPointsAndGoalDiff leagueId) teams
+
+    return $ Data.List.sortBy leagueSort (zip teams points)
+
+leagueSort :: (Entity Team, Types.TournRecord) -> (Entity Team, Types.TournRecord) -> Ordering
+leagueSort (teamA, recA) (teamB, recB) = compare recB recA
+
+calcTeamPointsAndGoalDiff :: DB.MonadDB a => LeagueId -> Entity Team -> DB.Con a Types.TournRecord
+calcTeamPointsAndGoalDiff leagueId team = do
+    games <- selectList ( [GameLeagueId ==.  leagueId, GameStatus ==. Types.Played] ++
+          ([GameHomeTeamId ==. entityKey team] ||. [GameAwayTeamId ==. entityKey team]) ) []
+    
+    return $ foldr ((+) . pointsNGd . entityVal) (Types.TournRecord 0 0 0 0 0 0 0 0) (games :: [Entity Game])
+
+    where
+        pointsNGd' ourGoals theirGoals
+            | ourGoals > theirGoals = 
+                Types.TournRecord 3 1 1 0 0 ourGoals theirGoals (ourGoals - theirGoals)
+            | ourGoals < theirGoals = 
+                Types.TournRecord 0 1 0 0 1 ourGoals theirGoals (ourGoals - theirGoals)
+            | otherwise = 
+                Types.TournRecord 1 1 0 1 0 ourGoals theirGoals (ourGoals - theirGoals)
+
+        pointsNGd :: Game -> Types.TournRecord
+        pointsNGd game =
+            if gameHomeTeamId game == entityKey team then
+                pointsNGd' (gameHomeGoals game) (gameAwayGoals game)
+            else
+                pointsNGd' (gameAwayGoals game) (gameHomeGoals game)
+
+populateSchema :: DB.MonadDB a => DB.Con a ()
+populateSchema = do
+    league1 <- insert $ League "1st Division Season 1922" False
+    league2 <- insert $ League "2nd Division Season 1922" False
 
     teamA <- insert $ Team "Team A"
     teamB <- insert $ Team "Team B"
@@ -27,27 +63,15 @@ populate = do
     teamF <- insert $ Team "Team F"
     teamG <- insert $ Team "Team G"
     teamH <- insert $ Team "Team H"
-    teamI <- insert $ Team "Team I"
-    teamJ <- insert $ Team "Team J"
-    teamK <- insert $ Team "Team K"
-    teamL <- insert $ Team "Team L"
-    teamM <- insert $ Team "Team M"
-    teamN <- insert $ Team "Team N"
 
     insert $ TeamLeague teamA league1
     insert $ TeamLeague teamB league1
     insert $ TeamLeague teamC league1
     insert $ TeamLeague teamD league1
-    insert $ TeamLeague teamE league1
-    insert $ TeamLeague teamF league1
-    insert $ TeamLeague teamG league1
-    insert $ TeamLeague teamH league1
-    insert $ TeamLeague teamI league1
-    insert $ TeamLeague teamJ league1
-    insert $ TeamLeague teamK league1
-    insert $ TeamLeague teamL league1
-    insert $ TeamLeague teamM league1
-    insert $ TeamLeague teamN league1
+    insert $ TeamLeague teamE league2
+    insert $ TeamLeague teamF league2
+    insert $ TeamLeague teamG league2
+    insert $ TeamLeague teamH league2
 
     makeFixtures league1
 

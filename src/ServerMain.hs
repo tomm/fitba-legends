@@ -6,6 +6,7 @@
 {-# LANGUAGE ViewPatterns          #-}
 module Main where
 
+import qualified Database.Persist as P
 import Database.Persist.Sql
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Resource (runResourceT)
@@ -15,6 +16,8 @@ import Yesod.Persist.Core
 import Database.Esqueleto as E
 
 import qualified DB
+import qualified Types
+import qualified Core
 import Schema
 
 data App = App { getStatic :: Static, getDbPool :: DB.ConnectionPool }
@@ -24,6 +27,7 @@ staticFiles "static"
 mkYesod "App" [parseRoutes|
     /cmd CmdR GET
     /fixtures FixturesR GET
+    /tables LeagueTablesR GET
     /static StaticR Static getStatic
 |]
 
@@ -35,6 +39,28 @@ instance YesodPersist App where
     runDB action = do
         pool <- getDbPool <$> getYesod
         runSqlPool action pool
+
+getLeagueTablesR :: HandlerT App IO Yesod.Value
+getLeagueTablesR = do
+    leagues <- runDB $ selectList [LeagueIsFinished P.==. False] []
+    tables <- mapM (\l ->
+            runDB $ Core.getLeagueTable (entityKey l)
+        ) leagues
+    return $ array $ map tableToJson (zip leagues tables)
+    where
+        tableToJson (league, table) =
+            object ["name" .= (leagueName . entityVal) league,
+                    "record" .= map teamRecToJson table]
+        teamRecToJson (entityTeam, tournRec) =
+            object ["teamId" .= (fromSqlKey . entityKey) entityTeam,
+                    "name" .= (teamName . entityVal) entityTeam,
+                    "played" .= Types.played tournRec,
+                    "won" .= Types.won tournRec,
+                    "drawn" .= Types.drawn tournRec,
+                    "lost" .= Types.lost tournRec,
+                    "goalsFor" .= Types.gf tournRec,
+                    "goalsAgainst" .= Types.ga tournRec
+                    ]
 
 getFixturesR :: HandlerT App IO Yesod.Value
 getFixturesR = do
