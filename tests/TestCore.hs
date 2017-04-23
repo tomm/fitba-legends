@@ -24,11 +24,15 @@ type IOTest = IO ()
 data TestFailure = TestFailure String deriving (Show)
 instance Exception TestFailure
 
+assertEq msg a b = unless (a == b) (throw $ TestFailure $ "FAIL: " ++ msg ++ ": " ++ show a ++ " /= " ++ show b)
+assertNe msg a b = unless (a /= b) (throw $ TestFailure $ "FAIL: " ++ msg ++ ": " ++ show a ++ " == " ++ show b)
+
 main :: IO ()
 main = do
     testCreateSchema
     testSettings
     testGetLeagueTable
+    testTeamFormationOrdering
     -- leave this one last, so test run leaves a populated test.db file
     testPopulateSchema
 
@@ -52,8 +56,56 @@ testSettings =
         Settings.set "season" "1923"
         Settings.get "season" >>= assertEq "Settings.get updated record" (Just "1923")
 
-assertEq msg a b = unless (a == b) (throw $ TestFailure $ "FAIL: " ++ msg ++ ": " ++ show a ++ " /= " ++ show b)
-assertNe msg a b = unless (a /= b) (throw $ TestFailure $ "FAIL: " ++ msg ++ ": " ++ show a ++ " == " ++ show b)
+testTeamFormationOrdering :: IOTest
+testTeamFormationOrdering =
+    dbTest $ do
+        formation <- insert Formation
+        team <- insert $ Team "Test team" formation
+
+        player1 <- insert $ Player team "Albert Einstein" 5
+        player2 <- insert $ Player team "Kurt Schrödinger" 6
+        player3 <- insert $ Player team "Charles Darwin" 4
+        player4 <- insert $ Player team "Murray Gell-Mann" 8
+        player5 <- insert $ Player team "Richard Feynman" 3
+        player6 <- insert $ Player team "Johannes Kepler" 5
+        player7 <- insert $ Player team "Julian Schwinger" 6
+        player8 <- insert $ Player team "Marie Curie" 5
+        player9 <- insert $ Player team "Isaac Newton" 8
+        player10 <- insert $ Player team "Ludwig Boltzmann" 7
+        player11 <- insert $ Player team "George Smoot" 4
+        player12 <- insert $ Player team "Albert Michelson" 6
+        player13 <- insert $ Player team "Edward Morley" 9
+
+        insert $ FormationPos formation player1 1 $ Just (1,2)
+        insert $ FormationPos formation player2 8 $ Just (2,3)
+        insert $ FormationPos formation player3 2 $ Just (3,4)
+        insert $ FormationPos formation player4 7 Nothing
+        insert $ FormationPos formation player5 3 $ Just (2,3)
+        insert $ FormationPos formation player6 6 $ Just (2,3)
+        insert $ FormationPos formation player7 4 $ Just (2,3)
+        insert $ FormationPos formation player8 5 $ Just (2,3)
+
+        playerPositions <- Core.getPlayersOrdered team formation
+        assertEq "getPlayersOrdered length" 13 (length playerPositions)
+        assertEq "Player 1 name" "Albert Einstein" $ (playerName . entityVal . fst) (playerPositions!!0)
+        assertEq "Player 1 pos" (Just (1,2)) $ snd (playerPositions!!0)
+        assertEq "Player 2 name" "Charles Darwin" $ (playerName . entityVal . fst) (playerPositions!!1)
+        assertEq "Player 3 name" "Richard Feynman" $ (playerName . entityVal . fst) (playerPositions!!2)
+        assertEq "Player 4 name" "Julian Schwinger" $ (playerName . entityVal . fst) (playerPositions!!3)
+        assertEq "Player 5 name" "Marie Curie" $ (playerName . entityVal . fst) (playerPositions!!4)
+        assertEq "Player 6 name" "Johannes Kepler" $ (playerName . entityVal . fst) (playerPositions!!5)
+        assertEq "Player 7 name" "Murray Gell-Mann" $ (playerName . entityVal . fst) (playerPositions!!6)
+        assertEq "Player 8 pos" Nothing $ snd (playerPositions!!6)
+        assertEq "Player 8 name" "Kurt Schrödinger" $ (playerName . entityVal . fst) (playerPositions!!7)
+        assertEq "Player 8 pos" (Just (2,3)) $ snd (playerPositions!!7)
+        assertEq "Player 9 name" "Isaac Newton" $ (playerName . entityVal . fst) (playerPositions!!8)
+        assertEq "Player 10 name" "Ludwig Boltzmann" $ (playerName . entityVal . fst) (playerPositions!!9)
+        assertEq "Player 11 name" "George Smoot" $ (playerName . entityVal . fst) (playerPositions!!10)
+        assertEq "Player 12 name" "Albert Michelson" $ (playerName . entityVal . fst) (playerPositions!!11)
+        assertEq "Player 13 name" "Edward Morley" $ (playerName . entityVal . fst) (playerPositions!!12)
+        assertEq "Player 13 pos" Nothing $ snd (playerPositions!!12)
+
+        return ()
 
 testGetLeagueTable :: IOTest
 testGetLeagueTable = do
@@ -62,12 +114,15 @@ testGetLeagueTable = do
         league1 <- insert $ League "league 1" False
         league2 <- insert $ League "league 2" False
 
-        teamA <- insert $ Team "Team A"
-        teamB <- insert $ Team "Team B"
-        teamC <- insert $ Team "Team C"
-        teamD <- insert $ Team "Team D"
-        teamE <- insert $ Team "Team E"
-        teamF <- insert $ Team "Team F"
+        -- hehe. I is learn haskell
+        let makeTeam name = insert Formation >>= insert . Team name
+
+        teamA <- makeTeam "Team A"
+        teamB <- makeTeam "Team B"
+        teamC <- makeTeam "Team C"
+        teamD <- makeTeam "Team D"
+        teamE <- makeTeam "Team E"
+        teamF <- makeTeam "Team F"
 
         insert $ TeamLeague teamA league1
         insert $ TeamLeague teamB league1

@@ -25,7 +25,8 @@ League
 
 Team
     name Text
-    --formation
+    formationId FormationId
+    UniqueFormation formationId
     deriving Show Eq
 
 TeamLeague
@@ -39,6 +40,18 @@ Player
     name Text
     skill Int
     deriving Show
+
+Formation
+    deriving Show Eq
+
+FormationPos
+    formationId FormationId
+    playerId PlayerId
+    positionNum Int
+    positionLoc Types.FormationPitchPos Maybe
+    UniqueFormPos formationId positionNum
+    UniqueFormPlayer formationId playerId
+    deriving Show Eq
 
 Game
     leagueId LeagueId
