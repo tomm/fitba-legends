@@ -19,19 +19,21 @@ Test-Suite test-core
   type: exitcode-stdio-1.0
   main-is: TestCore.hs
   hs-source-dirs: tests src
+  ghc-options: -Wall
   build-depends: base >=4.9 && <4.10,
                  esqueleto >=2.5 && <2.6,
                  persistent-sqlite >= 2.6,
                  persistent-template >= 2.5,
                  persistent >= 2.6,
                  yesod >= 1.4,
+                 MonadRandom >= 0.5,
+                 vector,
                  aeson,
                  random,
                  array,
                  transformers,
                  exceptions,
                  monad-logger,
-                 resourcet,
                  resourcet,
                  directory,
                  text,
@@ -42,6 +44,7 @@ executable webserver
   main-is:             ServerMain.hs
   -- other-modules:       
   -- other-extensions:    
+  ghc-options: -Wall
   build-depends: base >=4.9 && <4.10,
                  esqueleto >=2.5 && <2.6,
                  persistent-sqlite >= 2.6,
@@ -50,13 +53,14 @@ executable webserver
                  yesod >= 1.4,
                  yesod-static >= 1.5,
                  yesod-persistent >= 1.4,
+                 vector,
+                 MonadRandom >= 0.5,
                  aeson,
                  random,
                  array,
                  transformers,
                  exceptions,
                  monad-logger,
-                 resourcet,
                  resourcet,
                  directory,
                  text,

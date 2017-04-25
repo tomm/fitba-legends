@@ -6,8 +6,8 @@ module Core (
     getPlayersOrdered
 ) where
 
-import System.Random (newStdGen)
-import Control.Monad (guard, join)
+import System.Random (RandomGen, newStdGen)
+import Control.Monad
 import Control.Monad.IO.Class (liftIO)
 import Database.Persist.Sqlite
 import qualified Database.Esqueleto as E
@@ -16,12 +16,14 @@ import Data.Time.Calendar as Calendar
 import qualified Control.Arrow as Arrow
 import qualified Data.Text as T
 import qualified Data.List (sortBy)
+import qualified Control.Monad.Random as Random
 
 import qualified DB (Con, MonadDB)
 import Schema
 import qualified Utils
 import qualified Settings
 import qualified Types
+import qualified RandName
 
 -- ordered GK first, then 10 on pitch, reserves, etc
 getPlayersOrdered :: DB.MonadDB a => TeamId -> FormationId -> DB.Con a [(Entity Player, Maybe Types.FormationPitchPos)]
@@ -102,7 +104,29 @@ populateSchema = do
         makeTeam :: DB.MonadDB a => T.Text -> DB.Con a (Key Team)
         makeTeam name = do
             formation <- insert Formation
-            insert $ Team name formation
+            team <- insert $ Team name formation
+            g <- liftIO newStdGen
+            players <- mapM insert $ fst $ Random.runRand (replicateM 22 (makeRandomPlayer team)) g
+
+            insertFormationPositions formation $ zip players [
+                -- 4-4-2
+                Just (2, 5), -- gk
+                Just (0, 4), Just (1, 4), Just (3, 4), Just (4, 4),
+                Just (0, 2), Just (1, 2), Just (3, 2), Just (4, 2),
+                Just (1, 0), Just (3, 0) ]
+
+            return team
+
+makeRandomPlayer :: (RandomGen g) => TeamId -> Random.Rand g Player
+makeRandomPlayer teamId = do
+    name <- RandName.randName
+    skill <- Random.getRandomR (1,9)
+    return $ Player teamId name skill
+
+insertFormationPositions :: DB.MonadDB a => FormationId -> [(PlayerId, Maybe Types.FormationPitchPos)] -> DB.Con a ()
+insertFormationPositions formationId plId_pitchPos =
+    mapM_ (\(idx, (playerId, loc)) -> insert $ FormationPos formationId playerId idx loc)
+        $ zip [1..] plId_pitchPos
 
 getTeamsInLeague :: DB.MonadDB a => LeagueId -> DB.Con a [Entity Team]
 getTeamsInLeague leagueId = do

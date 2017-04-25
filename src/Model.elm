@@ -11,8 +11,14 @@ type alias WatchingGame = { gameId: GameId, timePoint: Time }
 
 type UiTab = TabTeam | TabLeagueTables | TabFixtures (Maybe WatchingGame) | TabFinances
 
-type alias Model = {
+type alias RootModel = {
     errorMsg: Maybe String,
+    state: RootState
+}
+
+type RootState = Loading | GameData Model
+
+type alias Model = {
     ourTeamId: TeamId,
     tabTeamSelectedPlayer: Maybe Int,
     tab: UiTab,
@@ -36,7 +42,7 @@ premierLeague = { name="Scottish Premier Division", record=[
   ]}
 -}
 
-type alias Player = { name: String, skill: Int }
+type alias Player = { id: Int, name: String, skill: Int }
 
 type alias GameId = Int
 type GameEventType = Boring | HomeGoal | AwayGoal | EndOfGame

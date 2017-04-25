@@ -9,11 +9,11 @@ module Main where
 import qualified Database.Persist as P
 import Database.Persist.Sql
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Resource (runResourceT)
 import Yesod
 import Yesod.Static
-import Yesod.Persist.Core
 import Database.Esqueleto as E
+import GHC.Int (Int64)
+import Data.Maybe
 
 import qualified DB
 import qualified Types
@@ -28,6 +28,8 @@ mkYesod "App" [parseRoutes|
     /cmd CmdR GET
     /fixtures FixturesR GET
     /tables LeagueTablesR GET
+    /load_game LoadGameR GET
+    /squad/#Int64 SquadR GET
     /static StaticR Static getStatic
 |]
 
@@ -39,6 +41,28 @@ instance YesodPersist App where
     runDB action = do
         pool <- getDbPool <$> getYesod
         runSqlPool action pool
+
+getLoadGameR :: HandlerT App IO Yesod.Value
+getLoadGameR = getSquadR 1
+
+getSquadR :: Int64 -> HandlerT App IO Yesod.Value
+getSquadR teamId = do
+    maybeTeam <- runDB $ get (toSqlKey teamId :: TeamId)
+
+    case maybeTeam of
+        Nothing -> notFound
+        Just team -> do
+            playersAndFormation <- runDB $ Core.getPlayersOrdered (toSqlKey teamId) (teamFormationId team)
+
+            return $ object ["id" .=  teamId,
+                             "name" .= teamName team,
+                             "players" .= map (playerToJson . fst) playersAndFormation,
+                             "formation" .= mapMaybe snd playersAndFormation]
+    where
+        playerToJson p =
+            object ["name" .= (playerName . entityVal) p,
+                    "skill" .= (playerSkill . entityVal) p,
+                    "id" .= (fromSqlKey . entityKey) p]
 
 getLeagueTablesR :: HandlerT App IO Yesod.Value
 getLeagueTablesR = do
@@ -85,6 +109,7 @@ getFixturesR = do
 getCmdR :: HandlerT App IO Yesod.Value
 getCmdR = return $ object ["msg" .= ("Hello world" :: String)]
 
+main :: IO ()
 main = do
     static' <- static "static"
 
