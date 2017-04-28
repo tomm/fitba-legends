@@ -3,20 +3,22 @@ module Core (
     getLeagueTable,
     makeFixtures,
     populateSchema,
-    getPlayersOrdered
+    getPlayersOrdered,
+    replaceFormationPositions
 ) where
 
-import System.Random (RandomGen, newStdGen)
 import Control.Monad
 import Control.Monad.IO.Class (liftIO)
 import Database.Persist.Sqlite
-import qualified Database.Esqueleto as E
-import Data.Time.Clock as Clock
+import Data.Maybe
 import Data.Time.Calendar as Calendar
+import Data.Time.Clock as Clock
 import qualified Control.Arrow as Arrow
-import qualified Data.Text as T
-import qualified Data.List (sortBy)
 import qualified Control.Monad.Random as Random
+import qualified Database.Esqueleto as E
+import qualified Data.List (sortBy)
+import qualified Data.Text as T
+import System.Random (RandomGen, newStdGen)
 
 import qualified DB (Con, MonadDB)
 import Schema
@@ -25,18 +27,33 @@ import qualified Settings
 import qualified Types
 import qualified RandName
 
+formation442 = [
+    (2, 5), -- gk
+    (0, 4), (1, 4), (3, 4), (4, 4),
+    (0, 2), (1, 2), (3, 2), (4, 2),
+    (1, 0), (3, 0) 
+    ]
+
 -- ordered GK first, then 10 on pitch, reserves, etc
 getPlayersOrdered :: DB.MonadDB a => TeamId -> FormationId -> DB.Con a [(Entity Player, Maybe Types.FormationPitchPos)]
 getPlayersOrdered teamId formationId = do
     results <- E.select $
         E.from $ \(p `E.LeftOuterJoin` fp) -> do
-            E.on (E.just (p E.^. PlayerId) E.==. fp E.?. FormationPosPlayerId)
+            E.on ((E.just (p E.^. PlayerId) E.==. fp E.?. FormationPosPlayerId) E.&&.
+                  ((fp E.?. FormationPosFormationId) E.==. E.just (E.val formationId)))
             E.where_ (p E.^. PlayerTeamId E.==. E.val teamId)
             E.orderBy [E.asc (E.isNothing $ fp E.?. FormationPosId), E.asc (fp E.?. FormationPosPositionNum)]
             return (p, fp E.?. FormationPosPositionLoc)
 
-    return $ map (Arrow.second $ Control.Monad.join . E.unValue) results
-    --                           ^^ Maybe (Maybe a) -> Maybe a
+    return $ map munge $ zip [0..] results
+    where
+        -- always give a default position to players 0-10
+        munge (idx, (p, pos))
+            | idx == 0 = (p, (Just . head) formation442)  -- GK must remain in place
+            | idx < 11 = (p, Just (fromMaybe (formation442 !! idx) ((Control.Monad.join . E.unValue) pos)))
+                                   --                           ^^ Maybe (Maybe a) -> Maybe a
+            | otherwise = (p, Nothing)
+
 
 -- ordered descending (ie !!0 is in first place)
 getLeagueTable :: DB.MonadDB a => LeagueId -> DB.Con a [(Entity Team, Types.TournRecord)]
@@ -108,12 +125,7 @@ populateSchema = do
             g <- liftIO newStdGen
             players <- mapM insert $ fst $ Random.runRand (replicateM 22 (makeRandomPlayer team)) g
 
-            insertFormationPositions formation $ zip players [
-                -- 4-4-2
-                Just (2, 5), -- gk
-                Just (0, 4), Just (1, 4), Just (3, 4), Just (4, 4),
-                Just (0, 2), Just (1, 2), Just (3, 2), Just (4, 2),
-                Just (1, 0), Just (3, 0) ]
+            replaceFormationPositions formation $ zip players (map Just formation442)
 
             return team
 
@@ -123,8 +135,9 @@ makeRandomPlayer teamId = do
     skill <- Random.getRandomR (1,9)
     return $ Player teamId name skill
 
-insertFormationPositions :: DB.MonadDB a => FormationId -> [(PlayerId, Maybe Types.FormationPitchPos)] -> DB.Con a ()
-insertFormationPositions formationId plId_pitchPos =
+replaceFormationPositions :: DB.MonadDB a => FormationId -> [(PlayerId, Maybe Types.FormationPitchPos)] -> DB.Con a ()
+replaceFormationPositions formationId plId_pitchPos = do
+    deleteWhere [FormationPosFormationId ==. formationId]
     mapM_ (\(idx, (playerId, loc)) -> insert $ FormationPos formationId playerId idx loc)
         $ zip [1..] plId_pitchPos
 

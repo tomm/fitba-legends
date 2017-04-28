@@ -4,9 +4,11 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE DeriveGeneric         #-}
 module Main where
 
 import qualified Database.Persist as P
+import Data.Text (Text)
 import Database.Persist.Sql
 import Control.Monad.IO.Class (liftIO)
 import Yesod
@@ -14,6 +16,8 @@ import Yesod.Static
 import Database.Esqueleto as E
 import GHC.Int (Int64)
 import Data.Maybe
+import Control.Arrow as Arrow
+import Network.HTTP.Types (status201)
 
 import qualified DB
 import qualified Types
@@ -30,6 +34,7 @@ mkYesod "App" [parseRoutes|
     /tables LeagueTablesR GET
     /load_game LoadGameR GET
     /squad/#Int64 SquadR GET
+    /save_formation SaveFormationR POST
     /static StaticR Static getStatic
 |]
 
@@ -41,6 +46,26 @@ instance YesodPersist App where
     runDB action = do
         pool <- getDbPool <$> getYesod
         runSqlPool action pool
+
+{-
+import GHC.Generics (Generic)
+data MyTurd = MyTurd { id :: Int, name :: Text } deriving (Show, Generic)
+instance FromJSON MyTurd
+-}
+
+myTeamId :: TeamId
+myTeamId = toSqlKey 1
+
+postSaveFormationR :: HandlerT App IO ()
+postSaveFormationR = do
+    maybeTeam <- runDB $ get myTeamId
+    case maybeTeam of
+        Nothing -> notFound
+        Just team -> do
+            -- we don't check playerIds are ours, but Core.getPlayersOrdered will ignore non-owned players
+            playerPoss <- requireJsonBody :: HandlerT App IO [(Int64, Maybe (Int, Int))]
+            runDB $ Core.replaceFormationPositions (teamFormationId team) $ map (Arrow.first toSqlKey) playerPoss
+            sendResponseStatus status201 "SUCCESS"
 
 getLoadGameR :: HandlerT App IO Yesod.Value
 getLoadGameR = getSquadR 1

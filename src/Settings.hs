@@ -24,7 +24,10 @@ get key = do
 
 set :: MonadDB a => Text -> Text -> Con a ()
 set key value =
+    void $ upsert (Settings key value) [SettingsValue =. value]
+    {- turns out I didn't need this crap. thank you upsert.
     (void . insert) (Settings key value) `catch` \(e :: SqliteException) ->
         case seError e of
             ErrorConstraint -> updateWhere [SettingsKey ==. key] [SettingsValue =. value]
             _ -> throwM e
+        -}

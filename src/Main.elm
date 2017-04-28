@@ -13,11 +13,13 @@ import Date
 import Task
 import Http
 import Json.Decode as Json
+import Json.Encode as JsonEncode
 
-import Model exposing (..)
-import TeamView
 import FixturesView
+import Model exposing (..)
+import RootMsg exposing (..)
 import Styles exposing (..)
+import TeamView
 
 
 main =
@@ -136,13 +138,6 @@ jsonDecodeLeagueTables =
 
 -- UPDATE
 
-type Msg
-  = ChangeTab UiTab | TeamViewMsg TeamView.Msg | ClockTick Time.Time
-  | FixturesViewMsg FixturesView.Msg
-  | UpdateFixtures (Result Http.Error (List Fixture))
-  | UpdateLeagueTables (Result Http.Error (List LeagueTable))
-  | GotStartGameData (Result Http.Error Team)
-
 update : Msg -> RootModel -> (RootModel, Cmd Msg)
 update msg model =
     let updateState newState = ({ model | state = GameData newState}, Cmd.none)
@@ -167,8 +162,10 @@ update msg model =
                     TabFixtures (Just watchingGame) -> updateState { m | tab=TabFixtures (Just {watchingGame |
                         timePoint = watchingGame.timePoint + 1 * Time.second})}
                     _ -> (model, Cmd.none)
-                TeamViewMsg msg -> updateState (TeamView.update msg m)
-                FixturesViewMsg msg -> updateState (FixturesView.update msg m)
+                MsgTeamView msg ->
+                    let (state, cmd) = TeamView.update msg m
+                    in ({ model | state = GameData state}, cmd)
+                MsgFixturesView msg -> updateState (FixturesView.update msg m)
                 UpdateFixtures result -> case result of
                     Ok fixtures -> updateState { m | fixtures = fixtures }
                     Err error -> ({model | errorMsg = Just <| toString error}, Cmd.none)
@@ -176,6 +173,7 @@ update msg model =
                     Ok tables -> updateState { m | leagueTables = tables }
                     Err error -> ({model | errorMsg = Just <| toString error}, Cmd.none)
                 GotStartGameData _ -> ({model | errorMsg = Just "Unexpected message"}, Cmd.none)
+                SavedFormation _ -> (model, Cmd.none) -- don't give a fuck
 
     in
         case model.state of
@@ -208,9 +206,9 @@ view model =
                     div [style [("clear", "both"), ("margin", "4em 0 0 0")]] [
                         text <| Maybe.withDefault "" model.errorMsg,
                         case m.tab of
-                            TabTeam -> Html.map TeamViewMsg <| TeamView.view m m.ourTeam
+                            TabTeam -> Html.map MsgTeamView <| TeamView.view m m.ourTeam
                             TabLeagueTables -> div [] (List.map (leagueTableTab m) m.leagueTables)
-                            TabFixtures maybeWatchingGame -> Html.map FixturesViewMsg <| FixturesView.view m maybeWatchingGame
+                            TabFixtures maybeWatchingGame -> Html.map MsgFixturesView <| FixturesView.view m maybeWatchingGame
                             TabFinances -> text ""
                         ]
                 ]

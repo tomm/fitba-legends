@@ -6,8 +6,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Schema where
 
-import Database.Persist
-import Database.Persist.Sqlite
 import Database.Persist.TH
 import Data.Text
 import Data.Time.Clock
@@ -26,7 +24,6 @@ League
 Team
     name Text
     formationId FormationId
-    UniqueFormation formationId
     deriving Show Eq
 
 TeamLeague

@@ -1,4 +1,4 @@
-module TeamView exposing (view, update, Msg)
+module TeamView exposing (view, update)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -9,10 +9,11 @@ import Svg
 import Svg.Events
 import Svg.Attributes exposing (..)
 
+import Cmds
 import Model exposing (..)
+import RootMsg
 import Styles exposing (..)
-
-type Msg = SelectPlayer (Maybe Int) | MovePosition (Int, Int)
+import TeamViewMsg exposing (Msg, Msg(SelectPlayer, MovePosition))
 
 pitchX = 812
 pitchY = 1280
@@ -126,17 +127,21 @@ playerOnPitch model team playerIdx x y =
         textAtPlayerPos label x y
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> (Model, Cmd RootMsg.Msg)
 update msg model =
     case msg of
-        SelectPlayer (Just p) -> applySelectPlayer model p
-        SelectPlayer Nothing -> { model | tabTeamSelectedPlayer = Nothing }
+        SelectPlayer (Just p) ->
+            let newModel = applySelectPlayer model p
+            in (newModel, Cmds.saveFormation <| newModel.ourTeam)
+        SelectPlayer Nothing -> ({ model | tabTeamSelectedPlayer = Nothing }, Cmd.none)
         -- move selected player to new position
         MovePosition pos ->
             case model.tabTeamSelectedPlayer of
-                Nothing -> model
-                Just playerIdx -> { model | ourTeam = movePlayerPosition model.ourTeam playerIdx pos
-                                          , tabTeamSelectedPlayer = Nothing }
+                Nothing -> (model, Cmd.none)
+                Just playerIdx ->
+                    let newModel = { model | ourTeam = movePlayerPosition model.ourTeam playerIdx pos
+                                           , tabTeamSelectedPlayer = Nothing }
+                    in (newModel, Cmds.saveFormation <| newModel.ourTeam)
 
 movePlayerPosition : Team -> Int -> (Int, Int) -> Team
 movePlayerPosition team playerIdx pos =

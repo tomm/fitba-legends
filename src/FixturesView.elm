@@ -1,4 +1,4 @@
-module FixturesView exposing (view, update, Msg)
+module FixturesView exposing (view, update)
 
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
@@ -11,8 +11,7 @@ import Styles
 import Model exposing (..)
 import Utils
 import Dict
-
-type Msg = Watch GameId
+import FixturesViewMsg exposing (Msg, Msg(Watch))
 
 view : Model -> Maybe WatchingGame -> Html Msg
 view model maybeWatchingGame =

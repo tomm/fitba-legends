@@ -53,6 +53,7 @@ executable webserver
                  yesod >= 1.4,
                  yesod-static >= 1.5,
                  yesod-persistent >= 1.4,
+                 http-types,
                  vector,
                  MonadRandom >= 0.5,
                  aeson,
