@@ -131,17 +131,19 @@ update : Msg -> Model -> (Model, Cmd RootMsg.Msg)
 update msg model =
     case msg of
         SelectPlayer (Just p) ->
-            let newModel = applySelectPlayer model p
-            in (newModel, Cmds.saveFormation <| newModel.ourTeam)
+            let (newModel, changed) = applySelectPlayer model p
+            in (newModel, if changed then Cmds.saveFormation <| newModel.ourTeam else Cmd.none)
         SelectPlayer Nothing -> ({ model | tabTeamSelectedPlayer = Nothing }, Cmd.none)
         -- move selected player to new position
         MovePosition pos ->
             case model.tabTeamSelectedPlayer of
                 Nothing -> (model, Cmd.none)
                 Just playerIdx ->
-                    let newModel = { model | ourTeam = movePlayerPosition model.ourTeam playerIdx pos
-                                           , tabTeamSelectedPlayer = Nothing }
-                    in (newModel, Cmds.saveFormation <| newModel.ourTeam)
+                    let newTeam = movePlayerPosition model.ourTeam playerIdx pos
+                    in if newTeam /= model.ourTeam then
+                        ({model | ourTeam = newTeam, tabTeamSelectedPlayer = Nothing},
+                         Cmds.saveFormation <| newTeam)
+                       else ({model | tabTeamSelectedPlayer = Nothing}, Cmd.none)
 
 movePlayerPosition : Team -> Int -> (Int, Int) -> Team
 movePlayerPosition team playerIdx pos =
@@ -151,16 +153,16 @@ movePlayerPosition team playerIdx pos =
     else
         { team | formation = Array.set playerIdx pos team.formation }
 
-applySelectPlayer : Model -> Int -> Model
+applySelectPlayer : Model -> Int -> (Model, Bool)
 applySelectPlayer model p =
   case model.tabTeamSelectedPlayer of
-    Nothing -> { model | tabTeamSelectedPlayer = Just p }
+    Nothing -> ({ model | tabTeamSelectedPlayer = Just p }, False)
     Just q -> if p == q then
-        { model | tabTeamSelectedPlayer = Nothing }
+        ({ model | tabTeamSelectedPlayer = Nothing }, False)
       else
-        { model | tabTeamSelectedPlayer = Nothing,
-                  ourTeam = swapPlayerPositions (model.ourTeam) p q
-        }
+        ({ model | tabTeamSelectedPlayer = Nothing,
+                   ourTeam = swapPlayerPositions (model.ourTeam) p q
+        }, True)
 
 arrayDirtyGet : Int -> Array a -> a
 arrayDirtyGet i arr = case Array.get i arr of
