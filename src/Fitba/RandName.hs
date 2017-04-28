@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module RandName where
+module Fitba.RandName where
 
 import qualified Control.Monad.Random as Random
 import Data.Monoid ((<>))

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
-module Settings where
+module Fitba.Settings where
 
 import Control.Monad.Catch (catch, throwM)
 import Control.Monad.IO.Class (MonadIO)
@@ -10,8 +10,8 @@ import Database.Persist.Sqlite
 import Database.Sqlite (seError, SqliteException, Error(ErrorConstraint))
 import Data.Text (Text)
 
-import DB (MonadDB, Con)
-import Schema
+import Fitba.DB (MonadDB, Con)
+import Fitba.Schema
 
 -- toSqlKey :: Int -> Key record
 

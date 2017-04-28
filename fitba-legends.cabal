@@ -15,17 +15,16 @@ build-type:          Simple
 extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
-Test-Suite test-core
-  type: exitcode-stdio-1.0
-  main-is: TestCore.hs
-  hs-source-dirs: tests src
+library
+  default-language: Haskell2010
+  exposed-modules: Fitba.Core, Fitba.DB, Fitba.Schema, Fitba.Types, Fitba.RandName, Fitba.Utils, Fitba.Settings
+  hs-source-dirs:      src
   ghc-options: -Wall
   build-depends: base >=4.9 && <4.10,
                  esqueleto >=2.5 && <2.6,
                  persistent-sqlite >= 2.6,
                  persistent-template >= 2.5,
                  persistent >= 2.6,
-                 yesod >= 1.4,
                  MonadRandom >= 0.5,
                  vector,
                  aeson,
@@ -35,36 +34,32 @@ Test-Suite test-core
                  exceptions,
                  monad-logger,
                  resourcet,
-                 directory,
                  text,
                  time
+
+test-suite test-core
+  type: exitcode-stdio-1.0
+  main-is: TestCore.hs
+  hs-source-dirs: src/tests
+  ghc-options: -Wall
+  build-depends: base >=4.9 && <4.10,
+                 persistent-sqlite >= 2.6,
+                 directory,
+                 fitba-legends
   default-language: Haskell2010
 
 executable webserver
-  main-is:             ServerMain.hs
-  -- other-modules:       
+  main-is:             Main.hs
+  --other-modules:
   -- other-extensions:    
   ghc-options: -Wall
   build-depends: base >=4.9 && <4.10,
-                 esqueleto >=2.5 && <2.6,
-                 persistent-sqlite >= 2.6,
-                 persistent-template >= 2.5,
                  persistent >= 2.6,
-                 yesod >= 1.4,
-                 yesod-static >= 1.5,
-                 yesod-persistent >= 1.4,
+                 esqueleto >=2.5 && <2.6,
                  http-types,
-                 vector,
-                 MonadRandom >= 0.5,
-                 aeson,
-                 random,
-                 array,
-                 transformers,
-                 exceptions,
-                 monad-logger,
-                 resourcet,
-                 directory,
+                 yesod >= 1.4,
+                 yesod-static,
                  text,
-                 time
-  hs-source-dirs:      src
+                 fitba-legends
+  hs-source-dirs:      src/webserver
   default-language:    Haskell2010

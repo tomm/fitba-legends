@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE ConstraintKinds            #-}
-module DB where
+module Fitba.DB where
 import Control.Monad.Logger (NoLoggingT, runStderrLoggingT)
 import Control.Monad.Trans.Reader (ReaderT)
 import Control.Monad.Trans.Resource (ResourceT, MonadBaseControl)
@@ -9,7 +9,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Database.Persist.Sqlite
 import Control.Monad.Catch (MonadCatch)
 
-import qualified Schema
+import qualified Fitba.Schema as Schema
 
 type MonadDB a = (MonadIO a, MonadCatch a)  -- needs ConstraintKinds
 type Con a b = ReaderT SqlBackend a b

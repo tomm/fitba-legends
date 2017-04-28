@@ -13,11 +13,11 @@ import System.IO.Error (isDoesNotExistError)
 import Control.Applicative ((<$>))
 import Data.Maybe
 
-import qualified DB
-import Schema
-import qualified Core
-import qualified Settings
-import qualified Types
+import qualified Fitba.DB as DB
+import Fitba.Schema
+import qualified Fitba.Core as Core
+import qualified Fitba.Settings as Settings
+import qualified Fitba.Types as Types
 
 type IOTest = IO ()
 

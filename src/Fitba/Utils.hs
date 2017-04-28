@@ -1,4 +1,4 @@
-module Utils where
+module Fitba.Utils where
 
 import System.Random
 import Data.Array.ST

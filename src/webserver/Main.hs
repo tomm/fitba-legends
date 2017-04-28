@@ -8,7 +8,6 @@
 module Main where
 
 import qualified Database.Persist as P
-import Data.Text (Text)
 import Database.Persist.Sql
 import Control.Monad.IO.Class (liftIO)
 import Yesod
@@ -19,10 +18,10 @@ import Data.Maybe
 import Control.Arrow as Arrow
 import Network.HTTP.Types (status201)
 
-import qualified DB
-import qualified Types
-import qualified Core
-import Schema
+import qualified Fitba.DB as DB
+import qualified Fitba.Types as Types
+import qualified Fitba.Core as Core
+import Fitba.Schema
 
 data App = App { getStatic :: Static, getDbPool :: DB.ConnectionPool }
 
@@ -65,7 +64,7 @@ postSaveFormationR = do
             -- we don't check playerIds are ours, but Core.getPlayersOrdered will ignore non-owned players
             playerPoss <- requireJsonBody :: HandlerT App IO [(Int64, Maybe (Int, Int))]
             runDB $ Core.replaceFormationPositions (teamFormationId team) $ map (Arrow.first toSqlKey) playerPoss
-            sendResponseStatus status201 "SUCCESS"
+            sendResponseStatus status201 ("SUCCESS" :: String)
 
 getLoadGameR :: HandlerT App IO Yesod.Value
 getLoadGameR = getSquadR 1

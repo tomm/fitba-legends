@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell            #-}
-module Types where
+module Fitba.Types where
 
 import Data.Aeson
 import Data.Text as T

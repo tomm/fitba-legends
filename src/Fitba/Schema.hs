@@ -4,13 +4,14 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Schema where
+{-# LANGUAGE EmptyDataDecls             #-}
+module Fitba.Schema where
 
 import Database.Persist.TH
 import Data.Text
 import Data.Time.Clock
 
-import qualified Types
+import qualified Fitba.Types as Types
 
 type PitchPos = (Int, Int)
 type Season = Int

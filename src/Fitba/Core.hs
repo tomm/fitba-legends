@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Core (
+module Fitba.Core (
     getLeagueTable,
     makeFixtures,
     populateSchema,
@@ -20,12 +20,12 @@ import qualified Data.List (sortBy)
 import qualified Data.Text as T
 import System.Random (RandomGen, newStdGen)
 
-import qualified DB (Con, MonadDB)
-import Schema
-import qualified Utils
-import qualified Settings
-import qualified Types
-import qualified RandName
+import Fitba.Schema
+import qualified Fitba.DB as DB (Con, MonadDB)
+import qualified Fitba.RandName as RandName
+import qualified Fitba.Settings as Settings
+import qualified Fitba.Types as Types
+import qualified Fitba.Utils as Utils
 
 formation442 = [
     (2, 6), -- gk
