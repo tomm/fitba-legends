@@ -90,14 +90,14 @@ testTeamFormationOrdering =
         playerPositions <- Core.getPlayersOrdered team formation
         assertEq "getPlayersOrdered length" 13 (length playerPositions)
         assertEq "Player 1 name" "Albert Einstein" $ (playerName . entityVal . fst) (playerPositions!!0)
-        assertEq "Player 1 pos" (Just (2,5)) $ snd (playerPositions!!0)  -- GK forced to (2,5) position regardless
+        assertEq "Player 1 pos" (Just (2,6)) $ snd (playerPositions!!0)  -- GK forced to (2,6) position regardless
         assertEq "Player 2 name" "Charles Darwin" $ (playerName . entityVal . fst) (playerPositions!!1)
         assertEq "Player 3 name" "Richard Feynman" $ (playerName . entityVal . fst) (playerPositions!!2)
         assertEq "Player 4 name" "Julian Schwinger" $ (playerName . entityVal . fst) (playerPositions!!3)
         assertEq "Player 5 name" "Marie Curie" $ (playerName . entityVal . fst) (playerPositions!!4)
         assertEq "Player 6 name" "Johannes Kepler" $ (playerName . entityVal . fst) (playerPositions!!5)
         assertEq "Player 7 name" "Murray Gell-Mann" $ (playerName . entityVal . fst) (playerPositions!!6)
-        assertEq "Player 7 pos" (Just (1,2)) $ snd (playerPositions!!6)
+        assertEq "Player 7 pos" (Just (1,3)) $ snd (playerPositions!!6)
         -- ^^ was set to Nothing, but we get a standard 442 position returned back (because Core hates empty positions)
         assertEq "Player 8 name" "Kurt Schrödinger" $ (playerName . entityVal . fst) (playerPositions!!7)
         assertEq "Player 8 pos" (Just (2,3)) $ snd (playerPositions!!7)

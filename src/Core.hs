@@ -28,10 +28,10 @@ import qualified Types
 import qualified RandName
 
 formation442 = [
-    (2, 5), -- gk
-    (0, 4), (1, 4), (3, 4), (4, 4),
-    (0, 2), (1, 2), (3, 2), (4, 2),
-    (1, 0), (3, 0) 
+    (2, 6), -- gk
+    (0, 5), (1, 5), (3, 5), (4, 5),
+    (0, 3), (1, 3), (3, 3), (4, 3),
+    (1, 1), (3, 1) 
     ]
 
 -- ordered GK first, then 10 on pitch, reserves, etc

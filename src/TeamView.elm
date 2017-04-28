@@ -18,10 +18,9 @@ import TeamViewMsg exposing (Msg, Msg(SelectPlayer, MovePosition))
 pitchX = 812
 pitchY = 1280
 
--- All pitch positions except goalkeeper. i dunno why I don't write it out as a literal...
--- [(0,0),(0,1),(0,2),(0,3),(0,4),(1,0),(1,1),(1,2),(1,3),(1,4),(2,0),(2,1),(2,2),(2,3),(2,4),(3,0),(3,1),(3,2),(3,3),(3,4),(4,0),(4,1),(4,2),(4,3),(4,4)]
+-- All non-GK pitch positions. note y=0 (opposition goal line) and y=6 (own goal line) are not permitted
 movablePitchPositions : List (Int, Int)
-movablePitchPositions = List.concat <| List.map (\x -> List.map (\y -> (x,y)) [0,1,2,3,4]) [0,1,2,3,4]
+movablePitchPositions = List.concat <| List.map (\x -> List.map (\y -> (x,y)) [1,2,3,4,5]) [0,1,2,3,4]
 
 view : Model -> Team -> Html Msg
 view model team =
@@ -81,9 +80,9 @@ pitchPosPixelPos : (Int, Int) -> (Float, Float)
 pitchPosPixelPos (x, y) =
     let
         xpadding = 100.0
-        ypadding = 250.0
+        ypadding = 100.0
         xinc = (pitchX - 2*xpadding) / 4
-        yinc = (pitchY - 2*ypadding) / 4.3
+        yinc = (pitchY - 2*ypadding) / 6
     in
         (xpadding + (toFloat x)*xinc, ypadding + (toFloat y)*yinc)
 
