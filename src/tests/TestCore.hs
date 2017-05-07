@@ -7,9 +7,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad (unless, when)
 import Database.Persist.Sqlite
 import Prelude hiding ( catch )
-import System.Directory (removeFile)
 import System.Exit (exitFailure, exitSuccess)
-import System.IO.Error (isDoesNotExistError)
 import Control.Applicative ((<$>))
 import Data.Maybe
 
@@ -18,6 +16,7 @@ import Fitba.Schema
 import qualified Fitba.Core as Core
 import qualified Fitba.Settings as Settings
 import qualified Fitba.Types as Types
+import DbTest
 
 type IOTest = IO ()
 
@@ -35,12 +34,6 @@ main = do
     testTeamFormationOrdering
     -- leave this one last, so test run leaves a populated test.db file
     testPopulateSchema
-
-dbTest m = do
-    -- Keep a test.db file lying around at the end of tests, so that we
-    -- can examine the DB in the case of failure
-    removeFile "test.db" `catch` (\e -> unless (isDoesNotExistError e) (throwIO e))
-    runSqlite "test.db" (runMigration migrateAll >> m)
 
 testCreateSchema :: IOTest
 testCreateSchema = do
@@ -63,19 +56,21 @@ testTeamFormationOrdering =
         formation2 <- insert Formation -- just to check we don't load from here!
         team <- insert $ Team "Test team" formation
 
-        player1 <- insert $ Player team "Albert Einstein" 5
-        player2 <- insert $ Player team "Kurt Schrödinger" 6
-        player3 <- insert $ Player team "Charles Darwin" 4
-        player4 <- insert $ Player team "Murray Gell-Mann" 8
-        player5 <- insert $ Player team "Richard Feynman" 3
-        player6 <- insert $ Player team "Johannes Kepler" 5
-        player7 <- insert $ Player team "Julian Schwinger" 6
-        player8 <- insert $ Player team "Marie Curie" 5
-        player9 <- insert $ Player team "Isaac Newton" 8
-        player10 <- insert $ Player team "Ludwig Boltzmann" 7
-        player11 <- insert $ Player team "George Smoot" 4
-        player12 <- insert $ Player team "Albert Michelson" 6
-        player13 <- insert $ Player team "Edward Morley" 9
+        let newPlayer team name = Player team name 5 5
+
+        player1 <- insert $ newPlayer team "Albert Einstein"
+        player2 <- insert $ newPlayer team "Kurt Schrödinger"
+        player3 <- insert $ newPlayer team "Charles Darwin"
+        player4 <- insert $ newPlayer team "Murray Gell-Mann"
+        player5 <- insert $ newPlayer team "Richard Feynman"
+        player6 <- insert $ newPlayer team "Johannes Kepler"
+        player7 <- insert $ newPlayer team "Julian Schwinger"
+        player8 <- insert $ newPlayer team "Marie Curie"
+        player9 <- insert $ newPlayer team "Isaac Newton"
+        player10 <- insert $ newPlayer team "Ludwig Boltzmann"
+        player11 <- insert $ newPlayer team "George Smoot"
+        player12 <- insert $ newPlayer team "Albert Michelson"
+        player13 <- insert $ newPlayer team "Edward Morley"
 
         insert $ FormationPos formation player1 1 $ Just (1,2)
         insert $ FormationPos formation player2 8 $ Just (2,3)

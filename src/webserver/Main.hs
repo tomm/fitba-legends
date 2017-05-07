@@ -85,7 +85,7 @@ getSquadR teamId = do
     where
         playerToJson p =
             object ["name" .= (playerName . entityVal) p,
-                    "skill" .= (playerSkill . entityVal) p,
+                    "skill" .= (playerSpeed . entityVal) p, -- for now
                     "id" .= (fromSqlKey . entityKey) p]
 
 getLeagueTablesR :: HandlerT App IO Yesod.Value
@@ -137,5 +137,6 @@ main :: IO ()
 main = do
     static' <- static "static"
 
+    -- If you have no live.db then run tests and copy test.db to live.db
     DB.getPool "live.db" 4 $ \pool ->
         liftIO $ warp 3000 $ App static' pool

@@ -132,8 +132,9 @@ populateSchema = do
 makeRandomPlayer :: (RandomGen g) => TeamId -> Random.Rand g Player
 makeRandomPlayer teamId = do
     name <- RandName.randName
-    skill <- Random.getRandomR (1,9)
-    return $ Player teamId name skill
+    speed <- Random.getRandomR (1,9)
+    positioning <- Random.getRandomR (1,9)
+    return $ Player teamId name speed positioning
 
 replaceFormationPositions :: DB.MonadDB a => FormationId -> [(PlayerId, Maybe Types.FormationPitchPos)] -> DB.Con a ()
 replaceFormationPositions formationId plId_pitchPos = do

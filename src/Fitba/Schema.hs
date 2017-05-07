@@ -36,7 +36,8 @@ TeamLeague
 Player
     teamId TeamId
     name Text
-    skill Int
+    speed Int
+    positioning Int
     deriving Show
 
 Formation
