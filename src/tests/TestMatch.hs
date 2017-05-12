@@ -1,11 +1,12 @@
 module Main where
 
+import Control.Monad
 import qualified Control.Monad.Random as Random
 import Control.Monad.IO.Class (liftIO)
 import Database.Persist.Sql (toSqlKey, get, selectList, entityKey, entityVal)
 import Data.Maybe
 import qualified Data.Map.Strict as M
-import System.Random (newStdGen)
+import System.Random (newStdGen, split)
 
 import DbTest
 import qualified Fitba.Core as Core
@@ -30,10 +31,16 @@ main = do
 
         liftIO $ print gameState
 
-        let (gameState', log) = Match.runRandLogger (Match.takeGameTurn playerMap gameState) rng
+        doTurns gameState playerMap rng 5
 
-        liftIO $ print log
-        liftIO $ print gameState'
+    where
+        doTurns _ _ _ 0 = return ()
+        doTurns gameState playerMap rng n = do
+            let (rng', rng'') = System.Random.split rng
+            let (gameState', log) = Match.runRandLogger (Match.takeGameTurn playerMap gameState) rng'
+            liftIO $ putStrLn log
+            liftIO $ print gameState'
+            doTurns gameState' playerMap rng'' (n-1)
 
 
     --(_, log) <- Match.runRandLogger Match.game <$> newStdGen 

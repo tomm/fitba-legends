@@ -24,6 +24,8 @@ library
                  containers,
                  esqueleto >=2.5 && <2.6,
                  exceptions,
+                 microlens,
+                 microlens-th,
                  monad-logger,
                  mtl,
                  MonadRandom >= 0.5,
