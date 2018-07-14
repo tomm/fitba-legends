@@ -17,9 +17,22 @@ type PitchPos = (Int, Int)
 type Season = Int
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+User
+    name Text
+    teamId TeamId
+    secret Text
+    money Int
+    deriving Show
+
+Session
+    userId UserId
+    identifier Text
+    timestamp UTCTime
+    deriving Show
+
 League
     name Text
-    isFinished Bool
+    rank Int
     deriving Show
 
 Team
@@ -30,14 +43,19 @@ Team
 TeamLeague
     teamId TeamId
     leagueId LeagueId
-    UniqueTeamLeague teamId leagueId
+    season Int
+    UniqueTeamLeagueSeason teamId leagueId season
     deriving Show
 
 Player
     teamId TeamId
     name Text
+    shooting Int
+    passing Int
+    tackling Int
+    handling Int
     speed Int
-    positioning Int
+    positions Text  -- json-encoded [(x,y)]
     deriving Show
 
 Formation
@@ -60,19 +78,37 @@ Game
     start UTCTime
     homeGoals Int default=0
     awayGoals Int default=0
+    season Int
     deriving Show
 
 GameEvent
     gameId GameId
-    type_ Types.GameEventType
-    timestamp UTCTime
+    time UTCTime
     message Text
     ballPos PitchPos
+    kind Types.GameEventType
+    side Bool
     deriving Show
 
 Settings
     key Text
     value Text
     UniqueKey key
+    deriving Show
+
+TransferListing
+    playerId PlayerId
+    minPrice Int
+    deadline UTCTime
+    winningBidId TransferBidId Maybe
+    teamId TeamId -- seller
+    status Types.TransferListingStatus
+    deriving Show
+
+TransferBid
+    teamId TeamId
+    amount Int
+    transferListingId TransferListingId
+    UniqueTeamBid teamId transferListingId
     deriving Show
 |]

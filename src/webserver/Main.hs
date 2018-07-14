@@ -28,6 +28,7 @@ data App = App { getStatic :: Static, getDbPool :: DB.ConnectionPool }
 staticFiles "static"
 
 mkYesod "App" [parseRoutes|
+    / LoginR GET
     /cmd CmdR GET
     /fixtures FixturesR GET
     /tables LeagueTablesR GET
@@ -54,6 +55,20 @@ instance FromJSON MyTurd
 
 myTeamId :: TeamId
 myTeamId = toSqlKey 1
+
+getLoginR :: HandlerT App IO Html
+getLoginR = defaultLayout $ 
+    toWidget [whamlet|
+        <form method=post action=@{LoginR}>
+            Fitba login:
+            <label for=name>Username:
+            <input type=text name=name>
+            <label for=password>Username:
+            <input type=password name=secret>
+    |]
+
+postLoginR :: HandlerT App IO ()
+postLoginR = return ()
 
 postSaveFormationR :: HandlerT App IO ()
 postSaveFormationR = do
@@ -90,7 +105,7 @@ getSquadR teamId = do
 
 getLeagueTablesR :: HandlerT App IO Yesod.Value
 getLeagueTablesR = do
-    leagues <- runDB $ selectList [LeagueIsFinished P.==. False] []
+    leagues <- runDB $ selectList [{-LeagueIsFinished P.==. False-}] []
     tables <- mapM (\l ->
             runDB $ Core.getLeagueTable (entityKey l)
         ) leagues
@@ -139,4 +154,4 @@ main = do
 
     -- If you have no live.db then run tests and copy test.db to live.db
     DB.getPool "live.db" 4 $ \pool ->
-        liftIO $ warp 3000 $ App static' pool
+        liftIO $ warp 3001 $ App static' pool

@@ -92,8 +92,8 @@ calcTeamPointsAndGoalDiff leagueId team = do
 
 populateSchema :: DB.MonadDB a => DB.Con a ()
 populateSchema = do
-    league1 <- insert $ League "1st Division Season 1922" False
-    league2 <- insert $ League "2nd Division Season 1922" False
+    league1 <- insert $ League "1st Division Season 1922" 1
+    league2 <- insert $ League "2nd Division Season 1922" 2
 
     teamA <- makeTeam "Team A"
     teamB <- makeTeam "Team B"
@@ -104,16 +104,16 @@ populateSchema = do
     teamG <- makeTeam "Team G"
     teamH <- makeTeam "Team H"
 
-    insert $ TeamLeague teamA league1
-    insert $ TeamLeague teamB league1
-    insert $ TeamLeague teamC league1
-    insert $ TeamLeague teamD league1
-    insert $ TeamLeague teamE league2
-    insert $ TeamLeague teamF league2
-    insert $ TeamLeague teamG league2
-    insert $ TeamLeague teamH league2
+    insert $ TeamLeague teamA league1 1
+    insert $ TeamLeague teamB league1 1
+    insert $ TeamLeague teamC league1 1
+    insert $ TeamLeague teamD league1 1
+    insert $ TeamLeague teamE league2 1
+    insert $ TeamLeague teamF league2 1
+    insert $ TeamLeague teamG league2 1
+    insert $ TeamLeague teamH league2 1
 
-    makeFixtures league1
+    makeFixtures league1 1
 
     return ()
 
@@ -132,9 +132,12 @@ populateSchema = do
 makeRandomPlayer :: (RandomGen g) => TeamId -> Random.Rand g Player
 makeRandomPlayer teamId = do
     name <- RandName.randName
+    shooting <- Random.getRandomR (1,9)
+    passing <- Random.getRandomR (1,9)
+    tackling <- Random.getRandomR (1,9)
+    handling <- Random.getRandomR (1,9)
     speed <- Random.getRandomR (1,9)
-    positioning <- Random.getRandomR (1,9)
-    return $ Player teamId name speed positioning
+    return $ Player teamId name shooting passing tackling handling speed "[[2,6]]"
 
 replaceFormationPositions :: DB.MonadDB a => FormationId -> [(PlayerId, Maybe Types.FormationPitchPos)] -> DB.Con a ()
 replaceFormationPositions formationId plId_pitchPos = do
@@ -147,8 +150,8 @@ getTeamsInLeague leagueId = do
     teamsLeague <- selectList [TeamLeagueLeagueId ==. leagueId] []
     selectList [TeamId <-. map (teamLeagueTeamId . entityVal) (teamsLeague :: [Entity TeamLeague])] []
 
-makeFixtures :: DB.MonadDB a => LeagueId -> DB.Con a ()
-makeFixtures leagueId = do
+makeFixtures :: DB.MonadDB a => LeagueId -> Int -> DB.Con a ()
+makeFixtures leagueId seasonNum = do
     teams <- getTeamsInLeague leagueId
     --liftIO $ print $ map entityVal (teams :: [Entity Team])
     let allMatches = do
@@ -176,7 +179,7 @@ makeFixtures leagueId = do
             mapM_ (\(matchNum, match) -> do
                     let secondsAfterMidnight = Clock.secondsToDiffTime $ toInteger $ 60 * (startTime + secondsBetweenGames*matchNum)
                         matchUTCTime = Clock.UTCTime matchDay secondsAfterMidnight
-                    insert $ Game leagueId ((entityKey . fst) match) ((entityKey . snd) match) Types.Scheduled matchUTCTime 0 0
+                    insert $ Game leagueId ((entityKey . fst) match) ((entityKey . snd) match) Types.Scheduled matchUTCTime 0 0 seasonNum
                 ) (zip [0..] matches)
 
 -- Schedule lists of pairs into 'days', where no 'a' appears twice in a given day

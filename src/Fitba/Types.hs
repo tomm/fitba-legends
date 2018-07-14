@@ -9,16 +9,19 @@ import Database.Persist.TH
 type FormationPitchPos = (Int, Int)
 
 -- for some reason persistent wants this imported in Schema.hs, not defined locally
-data GameEventType = Boring | HomeGoal | AwayGoal | EndOfGame deriving (Show, Read, Eq)
+data GameEventType = Boring | Shot | Goal | KickOff | EndOfGame deriving (Show, Read, Eq)
 derivePersistField "GameEventType"
 
-data GameStatus = Scheduled | Played deriving (Show, Read, Eq)
+data GameStatus = Scheduled | InProgress | Played deriving (Show, Read, Eq)
 derivePersistField "GameStatus"
 
 instance ToJSON GameStatus where
     toJSON a = Data.Aeson.String $ T.pack $ show a
 
 data TournRecord = TournRecord { points :: Int, played :: Int, won :: Int, drawn :: Int, lost :: Int, gf :: Int, ga :: Int, gd :: Int  } deriving (Show, Eq)
+
+data TransferListingStatus = Active | Sold | Unsold deriving (Show, Read, Eq)
+derivePersistField "TransferListingStatus"
 
 instance Num TournRecord where
     a + b = TournRecord (points a + points b) (played a + played b) (won a + won b)
@@ -28,7 +31,7 @@ instance Num TournRecord where
     _ * _ = undefined
     abs _ = undefined
     signum _ = undefined
-    fromInteger i = undefined
+    fromInteger _ = undefined
 
 instance Ord TournRecord where
     compare a b

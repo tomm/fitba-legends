@@ -56,7 +56,7 @@ testTeamFormationOrdering =
         formation2 <- insert Formation -- just to check we don't load from here!
         team <- insert $ Team "Test team" formation
 
-        let newPlayer team name = Player team name 5 5
+        let newPlayer team name = Player team name 5 5 5 5 5 "[[2,6]]"
 
         player1 <- insert $ newPlayer team "Albert Einstein"
         player2 <- insert $ newPlayer team "Kurt Schrödinger"
@@ -109,11 +109,12 @@ testGetLeagueTable :: IOTest
 testGetLeagueTable = do
     putStrLn "testGetLeagueTable..."
     dbTest $ do
-        league1 <- insert $ League "league 1" False
-        league2 <- insert $ League "league 2" False
+        league1 <- insert $ League "league 1" 1
+        league2 <- insert $ League "league 2" 1
 
         -- hehe. I is learn haskell
         let makeTeam name = insert Formation >>= insert . Team name
+            season = 1
 
         teamA <- makeTeam "Team A"
         teamB <- makeTeam "Team B"
@@ -122,14 +123,14 @@ testGetLeagueTable = do
         teamE <- makeTeam "Team E"
         teamF <- makeTeam "Team F"
 
-        insert $ TeamLeague teamA league1
-        insert $ TeamLeague teamB league1
-        insert $ TeamLeague teamC league1
-        insert $ TeamLeague teamD league1
-        insert $ TeamLeague teamE league2
-        insert $ TeamLeague teamF league2
+        insert $ TeamLeague teamA league1 season
+        insert $ TeamLeague teamB league1 season
+        insert $ TeamLeague teamC league1 season
+        insert $ TeamLeague teamD league1 season
+        insert $ TeamLeague teamE league2 season
+        insert $ TeamLeague teamF league2 season
 
-        Core.makeFixtures league1
+        Core.makeFixtures league1 season
 
         -- no games played. check the league table is in team id order
         table <- Core.getLeagueTable league1
