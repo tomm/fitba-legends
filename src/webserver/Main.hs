@@ -42,7 +42,7 @@ mkYesod "App" [parseRoutes|
     /fixtures FixturesR GET
     /tables LeagueTablesR GET
     /load_world LoadGameR GET
-    /squad/#Int64 SquadR GET
+    /squad/#TeamId SquadR GET
     /save_formation SaveFormationR POST
     /static StaticR Static getStatic
     /transfer_listings TransferListingsR GET
@@ -62,15 +62,6 @@ instance YesodPersist App where
         pool <- getDbPool <$> getYesod
         runSqlPool action pool
 
-{-
-import GHC.Generics (Generic)
-data MyTurd = MyTurd { id :: Int, name :: Text } deriving (Show, Generic)
-instance FromJSON MyTurd
--}
-
-myTeamId :: TeamId
-myTeamId = toSqlKey 1
-
 getIndexR :: HandlerT App IO Html
 getIndexR =
     getUser >>= \user -> case user of
@@ -88,17 +79,19 @@ getIndexR =
             |]
 
 getLoginR :: HandlerT App IO Html
-getLoginR = defaultLayout $ 
+getLoginR = defaultLayout $ do
+    addStylesheet $ StaticR style_css
     toWidget [whamlet|
-        <form method=post action=@{TryLoginR}>
-            Fitba login:
-            <label for=name>Username:
-            <input type=text name=name>
-            <br>
-            <label for=password>Username:
-            <input type=password name=secret>
-            <br>
-            <input type=submit>
+        <h1>Fitba Login
+        <div class="login">
+            <form method=post action=@{TryLoginR}>
+                <label for=name>Username:
+                <input type=text name=name>
+                <br>
+                <label for=password>Password:
+                <input type=password name=secret>
+                <br>
+                <input type=submit>
     |]
 
 postTryLoginR :: HandlerT App IO Html
@@ -130,11 +123,14 @@ postTryLoginR = do
                     redirect IndexR
 
 postSaveFormationR :: HandlerT App IO ()
-postSaveFormationR = do
-    maybeTeam <- runDB $ get myTeamId
-    case maybeTeam of
-        Nothing -> notFound
-        Just team -> do
+postSaveFormationR =
+    getUser >>= \u -> case u of
+        Nothing -> notAuthenticated
+        Just user -> runDB (get (userTeamId user)) >>= saveTeamFormation
+    where
+        saveTeamFormation :: Maybe Team -> HandlerT App IO ()
+        saveTeamFormation Nothing = notFound
+        saveTeamFormation (Just team) = do
             -- we don't check playerIds are ours, but Core.getPlayersOrdered will ignore non-owned players
             playerPoss <- requireJsonBody :: HandlerT App IO [(Int64, Maybe (Int, Int))]
             runDB $ Core.replaceFormationPositions (teamFormationId team) $ map (Arrow.first toSqlKey) playerPoss
@@ -208,46 +204,52 @@ instance FromJSON PostSellPlayer where
     parseJSON _ = mempty
 
 postSellPlayerR :: HandlerT App IO Yesod.Value
-postSellPlayerR = do
-    sellPlayer <- requireJsonBody :: HandlerT App IO PostSellPlayer
-    let playerId = toSqlKey (postSellPlayerId sellPlayer) :: PlayerId
-    player' <- runDB $ select $ from $ \p -> do
-        where_ $ (p ^. PlayerId E.==. E.val playerId) &&.
-                 (p ^. PlayerTeamId E.==. E.just (E.val myTeamId))
-        return p
-    case player' of
-        [player] -> do
-            now <- liftIO Data.Time.Clock.getCurrentTime
-            -- XXX I just want COUNT(*)!!!!
-            active_listings <- runDB $ select $ from $ \tl -> do
-                where_ $
-                    (tl ^. TransferListingPlayerId E.==. E.val playerId) &&.
-                    (tl ^. TransferListingStatus E.==. E.val Types.Active)
-                return (tl ^. TransferListingId)
-            if null active_listings then do
-                runDB $ insert (TransferListing
-                    playerId
-                    (200000 * playerSkill (entityVal player))
-                    (Data.Time.Clock.addUTCTime (60*60*24) now)
-                    Nothing
-                    (Just myTeamId)
-                    Types.Active)
-                return $ object ["status" .= "SUCCESS"]
-            else
-                return $ object ["status" .= "SUCCESS"]
-        _ -> notFound
+postSellPlayerR =
+    getUser >>= \u -> case u of
+        Nothing -> notAuthenticated
+        Just user -> do
+            let teamId = userTeamId user
+            sellPlayer <- requireJsonBody :: HandlerT App IO PostSellPlayer
+            let playerId = toSqlKey (postSellPlayerId sellPlayer) :: PlayerId
+            player' <- runDB $ select $ from $ \p -> do
+                where_ $ (p ^. PlayerId E.==. E.val playerId) &&.
+                         (p ^. PlayerTeamId E.==. E.just (E.val teamId))
+                return p
+            case player' of
+                [player] -> do
+                    now <- liftIO Data.Time.Clock.getCurrentTime
+                    -- XXX I just want COUNT(*)!!!!
+                    active_listings <- runDB $ select $ from $ \tl -> do
+                        where_ $
+                            (tl ^. TransferListingPlayerId E.==. E.val playerId) &&.
+                            (tl ^. TransferListingStatus E.==. E.val Types.Active)
+                        return (tl ^. TransferListingId)
+                    if null active_listings then do
+                        runDB $ insert (TransferListing
+                            playerId
+                            (200000 * playerSkill (entityVal player))
+                            (Data.Time.Clock.addUTCTime (60*60*24) now)
+                            Nothing
+                            (Just teamId)
+                            Types.Active)
+                        return $ object ["status" .= "SUCCESS"]
+                    else
+                        return $ object ["status" .= "SUCCESS"]
+                _ -> notFound
 
 
 getLoadGameR :: HandlerT App IO Yesod.Value
-getLoadGameR = getSquadR 1
+getLoadGameR =
+    getUser >>= \u -> case u of
+        Nothing -> notAuthenticated
+        Just user -> getSquadR (userTeamId user)
 
-getSquadR :: Int64 -> HandlerT App IO Yesod.Value
+getSquadR :: TeamId -> HandlerT App IO Yesod.Value
 getSquadR teamId =
-    runDB (get teamId') >>= \maybeTeam ->
+    runDB (get teamId) >>= \maybeTeam ->
         case maybeTeam of
             Nothing -> notFound
-            Just team -> teamToJson teamId' team
-    where teamId' = toSqlKey teamId :: TeamId
+            Just team -> teamToJson teamId team
 
 teamToJson :: TeamId -> Team -> HandlerT App IO Yesod.Value
 teamToJson teamId team =
@@ -297,45 +299,50 @@ getLeagueTablesR = do
                     ]
 
 getTransferListingsR :: HandlerT App IO Yesod.Value
-getTransferListingsR = do
-    now <- liftIO Data.Time.Clock.getCurrentTime
-    ts <- runDB $
-        select $ from $ \(tl `LeftOuterJoin` ownBid, player) -> do
-            on (
-                ((E.just $ tl ^. TransferListingId) E.==. (ownBid ?. TransferBidTransferListingId)) &&.
-                ((ownBid ?. TransferBidTeamId) E.==. (E.just $ E.val myTeamId))
-                )
-            where_ $
-                ((tl ^. TransferListingPlayerId) E.==. (player ^. PlayerId)) &&.
-                (
-                    (E.not_ $ E.isNothing $ ownBid ?. TransferBidId) E.||.
-                    (tl ^. TransferListingTeamId E.==. (E.just $ E.val myTeamId)) E.||.
-                    (
-                        (tl ^. TransferListingStatus E.==. E.val Types.Active) E.&&.
-                        (tl ^. TransferListingDeadline E.>. E.val now)
+getTransferListingsR =
+    getUser >>= \u -> case u of
+        Nothing -> notAuthenticated
+        Just user -> do
+            now <- liftIO Data.Time.Clock.getCurrentTime
+            ts <- runDB $ transferListingsQuery (userTeamId user) now
+            return $ array $ map resultToJsonObj ts
+    where
+        transferListingsQuery teamId now =
+            select $ from $ \(tl `LeftOuterJoin` ownBid, player) -> do
+                on (
+                    ((E.just $ tl ^. TransferListingId) E.==. (ownBid ?. TransferBidTransferListingId)) &&.
+                    ((ownBid ?. TransferBidTeamId) E.==. (E.just $ E.val teamId))
                     )
-                )
-            return (tl, ownBid, player)
-    return $ array $ map resultToJsonObj ts
-        where
-            resultToJsonObj :: (Entity TransferListing, Maybe (Entity TransferBid), Entity Player) -> Data.Aeson.Value
-            resultToJsonObj (tlE, ownBidE, playerE) =
-                let tl = entityVal tlE
-                    maybeOwnBid = fmap entityVal ownBidE
-                in object [
-                    "id" .= (fromSqlKey . entityKey) tlE,
-                    "minPrice" .= transferListingMinPrice tl,
-                    "deadline" .= transferListingDeadline tl,
-                    "sellerTeamId" .= fromMaybe (toSqlKey 0) (transferListingTeamId tl),
-                    "status" .= case transferListingStatus tl of
-                            Types.Active -> "OnSale"
-                            _ -> case fmap entityKey ownBidE of
-                                Nothing -> show (transferListingStatus tl)  -- 'Sold' or 'Unsold'
-                                justBidId -> if justBidId == transferListingWinningBidId tl then
-                                    "YouWon" else "YouLost",
-                    "youBid" .= fmap transferBidAmount maybeOwnBid,
-                    "player" .= playerToJson playerE
-                    ]
+                where_ $
+                    ((tl ^. TransferListingPlayerId) E.==. (player ^. PlayerId)) &&.
+                    (
+                        (E.not_ $ E.isNothing $ ownBid ?. TransferBidId) E.||.
+                        (tl ^. TransferListingTeamId E.==. (E.just $ E.val teamId)) E.||.
+                        (
+                            (tl ^. TransferListingStatus E.==. E.val Types.Active) E.&&.
+                            (tl ^. TransferListingDeadline E.>. E.val now)
+                        )
+                    )
+                return (tl, ownBid, player)
+
+        resultToJsonObj :: (Entity TransferListing, Maybe (Entity TransferBid), Entity Player) -> Data.Aeson.Value
+        resultToJsonObj (tlE, ownBidE, playerE) =
+            let tl = entityVal tlE
+                maybeOwnBid = fmap entityVal ownBidE
+            in object [
+                "id" .= (fromSqlKey . entityKey) tlE,
+                "minPrice" .= transferListingMinPrice tl,
+                "deadline" .= transferListingDeadline tl,
+                "sellerTeamId" .= fromMaybe (toSqlKey 0) (transferListingTeamId tl),
+                "status" .= case transferListingStatus tl of
+                        Types.Active -> "OnSale"
+                        _ -> case fmap entityKey ownBidE of
+                            Nothing -> show (transferListingStatus tl)  -- 'Sold' or 'Unsold'
+                            justBidId -> if justBidId == transferListingWinningBidId tl then
+                                "YouWon" else "YouLost",
+                "youBid" .= fmap transferBidAmount maybeOwnBid,
+                "player" .= playerToJson playerE
+                ]
 
 getFixturesR :: HandlerT App IO Yesod.Value
 getFixturesR = do
