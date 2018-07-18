@@ -1,5 +1,5 @@
 default:
-	elm-make src/frontend/*.elm --output static/main.js
+	./node_modules/.bin/elm-make src/frontend/*.elm --output static/main.js
 	cabal run
 
 test:

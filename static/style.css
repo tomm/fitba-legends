@@ -2,19 +2,79 @@ body {
 	-webkit-user-select: none;
 	padding: 0; margin: 0;
 	font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
-	font-size: 90%;
+	font-size: 75%;
 	background-image: url('/static/background.jpg');
 	background-attachment: fixed;
 	background-size: 100%;
+	overflow-x: hidden;
 }
 
-h1,h2,h3 {
-	text-align: center;
+table {
+	white-space: nowrap;
+	width: 100%;
+	border-collapse: collapse;
+	overflow-x: hidden;
+	margin-bottom: 1em;
+}
+
+.squad-list tr:nth-child(12) { border-bottom: 3px solid black; }
+.league-table tr:nth-last-child(1) { background-color: rgba(255, 180, 180, 0.5); }
+.league-table tr:nth-last-child(2) { background-color: rgba(255, 180, 180, 0.5); }
+.league-table tr:nth-last-child(3) { background-color: rgba(255, 180, 180, 0.5); }
+.league-table tr:nth-child(2) { background-color: rgba(180, 255, 180, 0.5); }
+.league-table tr:nth-child(3) { background-color: rgba(180, 255, 180, 0.5); }
+.league-table tr:nth-child(4) { background-color: rgba(180, 255, 180, 0.5); }
+
+.login { font-size: 200%; }
+.login form { margin: 20px; }
+.login label { display: block; margin: 5px; }
+.login input { border: 0px;margin: 5px; padding: 5px; }
+.login input[type="submit"] { padding: 10px 40px; background-color: rgba(150, 150, 255, 0.5); }
+
+span.player-position-badge { border-radius: 5px; padding: 0 3px; }
+span.player-position-GK { background-color: #f7f; }
+span.player-position-DR, span.player-position-DL, span.player-position-DC { background-color: #77f; }
+span.player-position-DMR, span.player-position-DML, span.player-position-DMC { background-color: #7c7; }
+span.player-position-MR, span.player-position-ML, span.player-position-MC { background-color: #ff7; }
+span.player-position-AMR, span.player-position-AML, span.player-position-AMC { background-color: #fa7; }
+span.player-position-CF { background-color: #f77; }
+
+tr.fixture-own { font-weight: bold; }
+
+.player-detailed-view td:nth-child(1) { font-weight: bold; }
+
+button.action {
+	background-color: rgba(150, 150, 255, 0.5);
+	padding: 10px;
+	font-weight: bold;
+	margin: 10px;
 }
 
 button {
 	outline: none;
 	border: 0;
+}
+
+button.circle-button {
+	width: 40px;
+	height: 40px;
+	border-radius: 20px;
+	text-align: center;
+	vertical-align: center;
+	padding: 0;
+	font-size: 200%;
+	background-color: rgba(150, 150, 255, 0.5);
+	margin: 0px 10px;
+	float: left;
+}
+
+div.half-width {
+	width: 49%;
+	float: left;
+}
+
+h1,h2,h3 {
+	text-align: center;
 }
 
 tr {
@@ -24,4 +84,16 @@ tr {
 td, th {
 	padding: 0.5em 0.2em;
 	text-align: left;
+}
+
+th {
+	background-color: rgba(150, 150, 255, 0.5);
+}
+
+div.main-content {
+	clear: both;
+}
+
+div.view {
+	margin: 0;
 }

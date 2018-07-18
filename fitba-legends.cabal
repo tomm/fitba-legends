@@ -15,13 +15,16 @@ cabal-version:       >=1.10
 library
   default-language: Haskell2010
   exposed-modules: Fitba.Core, Fitba.DB, Fitba.Schema, Fitba.Types,
-    Fitba.RandName, Fitba.Utils, Fitba.Settings, Fitba.Match
+    Fitba.RandName, Fitba.Utils, Fitba.Settings, Fitba.Match,
+    Fitba.Hash
   hs-source-dirs:      src
   ghc-options: -Wall
   build-depends: base >=4.9 && <4.10,
                  aeson,
+                 bytestring,
                  array,
                  containers,
+                 cryptohash,
                  esqueleto >=2.5 && <2.6,
                  exceptions,
                  microlens,
@@ -73,6 +76,10 @@ executable webserver
                  persistent >= 2.6,
                  esqueleto >=2.5 && <2.6,
                  http-types,
+                 aeson,
+                 time,
+                 bytestring,
+                 containers,
                  yesod >= 1.4,
                  yesod-static,
                  text,

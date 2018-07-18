@@ -9,6 +9,7 @@ module Fitba.Schema where
 
 import Database.Persist.TH
 import Data.Text
+import Data.ByteString
 import Data.Time.Clock
 
 import qualified Fitba.Types as Types
@@ -20,14 +21,16 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User
     name Text
     teamId TeamId
-    secret Text
+    secret ByteString
     money Int
+    UniqueUserName name
     deriving Show
 
 Session
     userId UserId
-    identifier Text
+    identifier ByteString
     timestamp UTCTime
+    UniqueSessionId identifier
     deriving Show
 
 League
@@ -48,14 +51,14 @@ TeamLeague
     deriving Show
 
 Player
-    teamId TeamId
+    teamId TeamId Maybe
     name Text
     shooting Int
     passing Int
     tackling Int
     handling Int
     speed Int
-    positions Text  -- json-encoded [(x,y)]
+    positions ByteString  -- json-encoded [(x,y)]
     deriving Show
 
 Formation
@@ -84,10 +87,11 @@ Game
 GameEvent
     gameId GameId
     time UTCTime
-    message Text
+    message Text Maybe
     ballPos PitchPos
     kind Types.GameEventType
     side Bool
+    playerId PlayerId Maybe
     deriving Show
 
 Settings
@@ -101,7 +105,7 @@ TransferListing
     minPrice Int
     deadline UTCTime
     winningBidId TransferBidId Maybe
-    teamId TeamId -- seller
+    teamId TeamId Maybe -- seller
     status Types.TransferListingStatus
     deriving Show
 
@@ -112,3 +116,7 @@ TransferBid
     UniqueTeamBid teamId transferListingId
     deriving Show
 |]
+
+playerSkill :: Player -> Int
+playerSkill p = playerShooting p + playerPassing p + playerTackling p +
+    playerHandling p + playerShooting p

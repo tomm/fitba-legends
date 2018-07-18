@@ -1,5 +1,5 @@
 module FixturesViewMsg exposing (Msg, Msg(..))
 
-import Model exposing (GameId)
+import Types
 
-type Msg = Watch GameId
+type Msg = Watch Types.GameId | GameTick | ShowFinalScore

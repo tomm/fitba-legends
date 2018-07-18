@@ -41,7 +41,7 @@ getPlayersOrdered teamId formationId = do
         E.from $ \(p `E.LeftOuterJoin` fp) -> do
             E.on ((E.just (p E.^. PlayerId) E.==. fp E.?. FormationPosPlayerId) E.&&.
                   ((fp E.?. FormationPosFormationId) E.==. E.just (E.val formationId)))
-            E.where_ (p E.^. PlayerTeamId E.==. E.val teamId)
+            E.where_ (p E.^. PlayerTeamId E.==. E.just (E.val teamId))
             E.orderBy [E.asc (E.isNothing $ fp E.?. FormationPosId), E.asc (fp E.?. FormationPosPositionNum)]
             return (p, fp E.?. FormationPosPositionLoc)
 
@@ -137,7 +137,7 @@ makeRandomPlayer teamId = do
     tackling <- Random.getRandomR (1,9)
     handling <- Random.getRandomR (1,9)
     speed <- Random.getRandomR (1,9)
-    return $ Player teamId name shooting passing tackling handling speed "[[2,6]]"
+    return $ Player (Just teamId) name shooting passing tackling handling speed "[[2,6]]"
 
 replaceFormationPositions :: DB.MonadDB a => FormationId -> [(PlayerId, Maybe Types.FormationPitchPos)] -> DB.Con a ()
 replaceFormationPositions formationId plId_pitchPos = do

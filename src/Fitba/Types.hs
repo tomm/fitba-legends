@@ -9,7 +9,7 @@ import Database.Persist.TH
 type FormationPitchPos = (Int, Int)
 
 -- for some reason persistent wants this imported in Schema.hs, not defined locally
-data GameEventType = Boring | Shot | Goal | KickOff | EndOfGame deriving (Show, Read, Eq)
+data GameEventType = Boring | ShotTry | ShotMiss | ShotSaved | Goal | KickOff | EndOfGame deriving (Show, Read, Eq)
 derivePersistField "GameEventType"
 
 data GameStatus = Scheduled | InProgress | Played deriving (Show, Read, Eq)
