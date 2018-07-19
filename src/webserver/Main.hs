@@ -16,6 +16,7 @@ import Database.Esqueleto as E
 import GHC.Int (Int64)
 import Data.Maybe
 import Data.Monoid
+import Control.Monad
 import Control.Arrow as Arrow
 import Network.HTTP.Types (status201)
 import qualified Data.Aeson
@@ -124,9 +125,8 @@ postTryLoginR = do
 
 postSaveFormationR :: HandlerT App IO ()
 postSaveFormationR =
-    getUser >>= \u -> case u of
-        Nothing -> notAuthenticated
-        Just user -> runDB (get (userTeamId user)) >>= saveTeamFormation
+    authGuard $ \user ->
+        runDB (get (userTeamId user)) >>= saveTeamFormation
     where
         saveTeamFormation :: Maybe Team -> HandlerT App IO ()
         saveTeamFormation Nothing = notFound
@@ -137,7 +137,7 @@ postSaveFormationR =
             sendResponseStatus status201 ("SUCCESS" :: String)
 
 data PostTransferBid = PostTransferBid {
-        postTransferBidListingId :: Int64, postTransferBidAmount :: Maybe Int64
+        postTransferBidListingId :: Int64, postTransferBidAmount :: Maybe Int
     } deriving (Show)
 instance FromJSON PostTransferBid where
     parseJSON (Object o) = PostTransferBid
@@ -160,42 +160,35 @@ getUser = do
         getUserForSession sess = runDB $ get (sessionUserId sess)
 
 postTransferBidR :: HandlerT App IO Yesod.Value
-postTransferBidR = do
-    return $ object []
-    {-
-    bid <- requireJsonBody :: HandlerT App IO PostTransferBid
-    user <- getUser
-    let teamId = userTeamid user
-        tlId = toSqlKey (postTransferBidListingId bid) :: TransferListingId
-    maybeTl <- runDB $ get tlId
-    now <- liftIO Data.Time.Clock.getCurrentTime
-    case maybeTl of
-        Nothing -> notFound
-        Just tl -> do
-            if transferListingDeadline tl < now then
-                return $ object ["status" .= "EXPIRED"]
-            else
-                case postTransferBidAmount bid of
-                    Nothing ->
-                        -- erase bid
-                        runDB $ delete $ from $ \b -> do
-                            where_ $
-                                (b ^. TransferBidTeamId E.==. E.val (userTeamId user)) &&.
-                                (b ^. TransferBidTransferListingId E.==. E.val tlId)
-                        return $ object ["status" .= "SUCCESS"]
-                    Just amount -> do
-                        your_bid <- getBy (UniqueTeamBid teamId tlId)
-                        case your_bid of
-                            Nothing -> createBid amount
-                            Just bid -> updateBid bid amount
-                        return $ object ["status" .= "SUCCESS"]
-
-    where
-        createBid amount = runDB $ insert $ TransferBid teamId amount tlId
-        updateBid bid amount = runDB $ update (transferBidId bid) amount
-        -}
-                        
-
+postTransferBidR =
+    authGuard $ \user -> do
+        bid <- requireJsonBody :: HandlerT App IO PostTransferBid
+        let teamId = userTeamId user
+            tlId = toSqlKey (postTransferBidListingId bid) :: TransferListingId
+        maybeTl <- runDB $ get tlId
+        now <- liftIO Data.Time.Clock.getCurrentTime
+        case maybeTl of
+            Nothing -> notFound
+            Just tl ->
+                if transferListingDeadline tl < now then
+                    return $ object ["status" .= "EXPIRED"]
+                else
+                    case postTransferBidAmount bid of
+                        Nothing -> do
+                            -- erase bid
+                            runDB $ E.delete $ from $ \b ->
+                                where_ $
+                                    (b ^. TransferBidTeamId E.==. E.val (userTeamId user)) &&.
+                                    (b ^. TransferBidTransferListingId E.==. E.val tlId)
+                            return $ object ["status" .= "SUCCESS"]
+                        Just amount -> do
+                            your_bid <- runDB $ getBy (UniqueTeamBid teamId tlId)
+                            case your_bid of
+                                Nothing -> void $ runDB $ insert $ TransferBid teamId amount tlId
+                                Just bid -> void $ runDB $ E.update $ \b -> do
+                                    set b [ TransferBidAmount E.=. E.val amount ]
+                                    where_ (b ^. TransferBidId E.==. E.val (entityKey bid))
+                            return $ object ["status" .= "SUCCESS"]
 
 data PostSellPlayer = PostSellPlayer { postSellPlayerId :: Int64 } deriving (Show)
 instance FromJSON PostSellPlayer where
@@ -205,59 +198,59 @@ instance FromJSON PostSellPlayer where
 
 postSellPlayerR :: HandlerT App IO Yesod.Value
 postSellPlayerR =
-    getUser >>= \u -> case u of
-        Nothing -> notAuthenticated
-        Just user -> do
-            let teamId = userTeamId user
-            sellPlayer <- requireJsonBody :: HandlerT App IO PostSellPlayer
-            let playerId = toSqlKey (postSellPlayerId sellPlayer) :: PlayerId
-            player' <- runDB $ select $ from $ \p -> do
-                where_ $ (p ^. PlayerId E.==. E.val playerId) &&.
-                         (p ^. PlayerTeamId E.==. E.just (E.val teamId))
-                return p
-            case player' of
-                [player] -> do
-                    now <- liftIO Data.Time.Clock.getCurrentTime
-                    -- XXX I just want COUNT(*)!!!!
-                    active_listings <- runDB $ select $ from $ \tl -> do
-                        where_ $
-                            (tl ^. TransferListingPlayerId E.==. E.val playerId) &&.
-                            (tl ^. TransferListingStatus E.==. E.val Types.Active)
-                        return (tl ^. TransferListingId)
-                    if null active_listings then do
-                        runDB $ insert (TransferListing
-                            playerId
-                            (200000 * playerSkill (entityVal player))
-                            (Data.Time.Clock.addUTCTime (60*60*24) now)
-                            Nothing
-                            (Just teamId)
-                            Types.Active)
-                        return $ object ["status" .= "SUCCESS"]
-                    else
-                        return $ object ["status" .= "SUCCESS"]
-                _ -> notFound
+    authGuard $ \user -> do
+        let teamId = userTeamId user
+        sellPlayer <- requireJsonBody :: HandlerT App IO PostSellPlayer
+        let playerId = toSqlKey (postSellPlayerId sellPlayer) :: PlayerId
+        player' <- runDB $ select $ from $ \p -> do
+            where_ $ (p ^. PlayerId E.==. E.val playerId) &&.
+                     (p ^. PlayerTeamId E.==. E.just (E.val teamId))
+            return p
+        case player' of
+            [player] -> do
+                now <- liftIO Data.Time.Clock.getCurrentTime
+                -- XXX I just want COUNT(*)!!!!
+                active_listings <- runDB $ select $ from $ \tl -> do
+                    where_ $
+                        (tl ^. TransferListingPlayerId E.==. E.val playerId) &&.
+                        (tl ^. TransferListingStatus E.==. E.val Types.Active)
+                    return (tl ^. TransferListingId)
+                if null active_listings then do
+                    runDB $ insert (TransferListing
+                        playerId
+                        (200000 * playerSkill (entityVal player))
+                        (Data.Time.Clock.addUTCTime (60*60*24) now)
+                        Nothing
+                        (Just teamId)
+                        Types.Active)
+                    return $ object ["status" .= "SUCCESS"]
+                else
+                    return $ object ["status" .= "SUCCESS"]
+            _ -> notFound
 
 
 getLoadGameR :: HandlerT App IO Yesod.Value
 getLoadGameR =
-    getUser >>= \u -> case u of
-        Nothing -> notAuthenticated
-        Just user -> getSquadR (userTeamId user)
+    authGuard $ \user -> getSquadR (userTeamId user)
 
 getSquadR :: TeamId -> HandlerT App IO Yesod.Value
 getSquadR teamId =
-    runDB (get teamId) >>= \maybeTeam ->
-        case maybeTeam of
-            Nothing -> notFound
-            Just team -> teamToJson teamId team
+    authGuard $ \user ->
+        runDB (get teamId) >>= \maybeTeam ->
+            case maybeTeam of
+                Nothing -> notFound
+                Just team ->
+                    teamToJson teamId team
+                        ["money" .= userMoney user | userTeamId user == teamId]
 
-teamToJson :: TeamId -> Team -> HandlerT App IO Yesod.Value
-teamToJson teamId team =
+teamToJson :: TeamId -> Team -> [(T.Text, Data.Aeson.Value)] -> HandlerT App IO Yesod.Value
+teamToJson teamId team additionalItems =
     runDB (Core.getPlayersOrdered teamId (teamFormationId team)) >>= \playersAndFormation ->
-        return $ object ["id" .= teamId,
-                         "name" .= teamName team,
-                         "players" .= map (playerToJson . fst) playersAndFormation,
-                         "formation" .= mapMaybe snd playersAndFormation]
+        return $ object $ additionalItems ++ 
+              ["id" .= teamId,
+               "name" .= teamName team,
+               "players" .= map (playerToJson . fst) playersAndFormation,
+               "formation" .= mapMaybe snd playersAndFormation]
 
 playerToJson :: Entity Player -> Data.Aeson.Value
 playerToJson p =
@@ -280,32 +273,33 @@ playerToJson p =
 
 getLeagueTablesR :: HandlerT App IO Yesod.Value
 getLeagueTablesR = do
-    leagues <- runDB $ selectList [{-LeagueIsFinished P.==. False-}] []
-    tables <- mapM (runDB . Core.getLeagueTable . entityKey) leagues
-    return $ array $ map tableToJson (zip leagues tables)
+    authGuard showLeagueTablesFor
     where
-        tableToJson (league, table) =
-            object ["name" .= (leagueName . entityVal) league,
-                    "record" .= map teamRecToJson table]
-        teamRecToJson (entityTeam, tournRec) =
-            object ["teamId" .= (fromSqlKey . entityKey) entityTeam,
-                    "name" .= (teamName . entityVal) entityTeam,
-                    "played" .= Types.played tournRec,
-                    "won" .= Types.won tournRec,
-                    "drawn" .= Types.drawn tournRec,
-                    "lost" .= Types.lost tournRec,
-                    "goalsFor" .= Types.gf tournRec,
-                    "goalsAgainst" .= Types.ga tournRec
-                    ]
+        showLeagueTablesFor user = do
+            leagues <- runDB $ selectList [{-LeagueIsFinished P.==. False-}] []
+            tables <- mapM (runDB . Core.getLeagueTable . entityKey) leagues
+            return $ array $ map tableToJson (zip leagues tables)
+            where
+                tableToJson (league, table) =
+                    object ["name" .= (leagueName . entityVal) league,
+                            "record" .= map teamRecToJson table]
+                teamRecToJson (entityTeam, tournRec) =
+                    object ["teamId" .= (fromSqlKey . entityKey) entityTeam,
+                            "name" .= (teamName . entityVal) entityTeam,
+                            "played" .= Types.played tournRec,
+                            "won" .= Types.won tournRec,
+                            "drawn" .= Types.drawn tournRec,
+                            "lost" .= Types.lost tournRec,
+                            "goalsFor" .= Types.gf tournRec,
+                            "goalsAgainst" .= Types.ga tournRec
+                            ]
 
 getTransferListingsR :: HandlerT App IO Yesod.Value
 getTransferListingsR =
-    getUser >>= \u -> case u of
-        Nothing -> notAuthenticated
-        Just user -> do
-            now <- liftIO Data.Time.Clock.getCurrentTime
-            ts <- runDB $ transferListingsQuery (userTeamId user) now
-            return $ array $ map resultToJsonObj ts
+    authGuard $ \user -> do
+        now <- liftIO Data.Time.Clock.getCurrentTime
+        ts <- runDB $ transferListingsQuery (userTeamId user) now
+        return $ array $ map resultToJsonObj ts
     where
         transferListingsQuery teamId now =
             select $ from $ \(tl `LeftOuterJoin` ownBid, player) -> do
@@ -345,18 +339,21 @@ getTransferListingsR =
                 ]
 
 getFixturesR :: HandlerT App IO Yesod.Value
-getFixturesR = do
-    fixtures <- runDB $
-        select $ from $ \(g, t1, t2) -> do
+getFixturesR =
+    authGuard $ \user -> do
+        fixtures <- runDB $ gamesInUserLeague user
+        return $ array $ map resultToJsonObj fixtures
+    where
+    gamesInUserLeague user =
+        select $ from $ \(g, t1, t2, teamLeague) -> do
             where_ $
                 (g ^. GameHomeTeamId E.==. t1 ^. TeamId) &&.
-                (g ^. GameAwayTeamId E.==. t2 ^. TeamId)
+                (g ^. GameAwayTeamId E.==. t2 ^. TeamId) &&.
+                (teamLeague ^. TeamLeagueLeagueId E.==. g ^. GameLeagueId) &&.
+                (teamLeague ^. TeamLeagueTeamId E.==. E.val (userTeamId user))
             orderBy [asc (g ^. GameStart)]
             limit 10000
             return (g, t1 ^. TeamName, t2 ^. TeamName)
-
-    return $ array $ map resultToJsonObj fixtures
-    where
     resultToJsonObj :: (Entity Game, E.Value T.Text, E.Value T.Text) -> Data.Aeson.Value
     resultToJsonObj (game, team1Name, team2Name) =
         object ["gameId" .= fromSqlKey (entityKey game),
@@ -368,39 +365,47 @@ getFixturesR = do
                 "awayGoals" .= gameAwayGoals (entityVal game)
                 ]
 
+authGuard :: (User -> HandlerT App IO a) -> HandlerT App IO a
+authGuard endpoint = getUser >>= \u -> case u of
+    Nothing -> notAuthenticated
+    Just user -> endpoint user
+
 getGameEventsSinceR :: GameId -> GameEventId -> HandlerT App IO Yesod.Value
 getGameEventsSinceR gameId gameEventId =
-    runDB (get gameEventId) >>= \maybeGameEvent -> case maybeGameEvent of
-        Nothing -> notFound
-        Just gameEvent -> do
-            now <- liftIO Data.Time.Clock.getCurrentTime
-            game_events_and_player_names <- runDB $
-                select $ from $ \(e `LeftOuterJoin` p) -> do
-                    E.on (e ^. GameEventPlayerId E.==. p ?. PlayerId)
-                    where_ $
-                        (e ^. GameEventGameId E.==. E.val gameId) &&.
-                        (e ^. GameEventTime E.>. E.val (gameEventTime gameEvent)) &&.
-                        (e ^. GameEventTime E.<=. E.val now)
-                    E.orderBy [E.asc (e ^. GameEventTime)]
-                    return (e, p ?. PlayerName)
-            return $ array (map gameEventToJson game_events_and_player_names)
+    authGuard $ \user ->
+        runDB (get gameEventId) >>= \maybeGameEvent -> case maybeGameEvent of
+            Nothing -> notFound
+            Just gameEvent -> do
+                now <- liftIO Data.Time.Clock.getCurrentTime
+                game_events_and_player_names <- runDB $
+                    select $ from $ \(e `LeftOuterJoin` p) -> do
+                        E.on (e ^. GameEventPlayerId E.==. p ?. PlayerId)
+                        where_ $
+                            (e ^. GameEventGameId E.==. E.val gameId) &&.
+                            (e ^. GameEventTime E.>. E.val (gameEventTime gameEvent)) &&.
+                            (e ^. GameEventTime E.<=. E.val now)
+                        E.orderBy [E.asc (e ^. GameEventTime)]
+                        return (e, p ?. PlayerName)
+                return $ array (map gameEventToJson game_events_and_player_names)
 
 getGameEventsAllR :: GameId -> HandlerT App IO Yesod.Value
-getGameEventsAllR gameId = do
-    game_events_and_player_names <- runDB $
-        select $ from $ \(e `LeftOuterJoin` p) -> do
-            E.on (e ^. GameEventPlayerId E.==. p ?. PlayerId)
-            where_ (e ^. GameEventGameId E.==. E.val gameId)
-            E.orderBy [E.asc (e ^. GameEventTime)]
-            return (e, p ?. PlayerName)
-    return $ array (map gameEventToJson game_events_and_player_names)
+getGameEventsAllR gameId =
+    authGuard $ \user -> do
+        game_events_and_player_names <- runDB $
+            select $ from $ \(e `LeftOuterJoin` p) -> do
+                E.on (e ^. GameEventPlayerId E.==. p ?. PlayerId)
+                where_ (e ^. GameEventGameId E.==. E.val gameId)
+                E.orderBy [E.asc (e ^. GameEventTime)]
+                return (e, p ?. PlayerName)
+        return $ array (map gameEventToJson game_events_and_player_names)
 
 getGameR :: GameId -> HandlerT App IO Yesod.Value
 getGameR gameId =
-    runDB (get gameId) >>= \maybeGame ->
-        case maybeGame of
-        Nothing -> notFound
-        Just game -> gameToJson game
+    authGuard $ \user ->
+        runDB (get gameId) >>= \maybeGame ->
+            case maybeGame of
+            Nothing -> notFound
+            Just game -> gameToJson game
     where
         gameToJson game = do
             game_events_and_player_names <- runDB $
@@ -414,8 +419,8 @@ getGameR gameId =
             case Just (,) <*> maybe_home_team <*> maybe_away_team of
                 Nothing -> notFound
                 Just (home_team, away_team) -> do
-                    home_team_val <- teamToJson (gameHomeTeamId game) home_team
-                    away_team_val <- teamToJson (gameAwayTeamId game) away_team
+                    home_team_val <- teamToJson (gameHomeTeamId game) home_team []
+                    away_team_val <- teamToJson (gameAwayTeamId game) away_team []
                     return $ object [
                         "id" .= gameId,
                         "homeTeam" .= home_team_val,
