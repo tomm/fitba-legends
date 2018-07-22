@@ -57,20 +57,21 @@ testTeamFormationOrdering =
         team <- insert $ Team "Test team" formation
 
         let newPlayer team name = Player team name 5 5 5 5 5 "[[2,6]]"
+        let jteam = Just team
 
-        player1 <- insert $ newPlayer team "Albert Einstein"
-        player2 <- insert $ newPlayer team "Kurt Schrödinger"
-        player3 <- insert $ newPlayer team "Charles Darwin"
-        player4 <- insert $ newPlayer team "Murray Gell-Mann"
-        player5 <- insert $ newPlayer team "Richard Feynman"
-        player6 <- insert $ newPlayer team "Johannes Kepler"
-        player7 <- insert $ newPlayer team "Julian Schwinger"
-        player8 <- insert $ newPlayer team "Marie Curie"
-        player9 <- insert $ newPlayer team "Isaac Newton"
-        player10 <- insert $ newPlayer team "Ludwig Boltzmann"
-        player11 <- insert $ newPlayer team "George Smoot"
-        player12 <- insert $ newPlayer team "Albert Michelson"
-        player13 <- insert $ newPlayer team "Edward Morley"
+        player1 <- insert $ newPlayer jteam "Albert Einstein"
+        player2 <- insert $ newPlayer jteam "Kurt Schrödinger"
+        player3 <- insert $ newPlayer jteam "Charles Darwin"
+        player4 <- insert $ newPlayer jteam "Murray Gell-Mann"
+        player5 <- insert $ newPlayer jteam "Richard Feynman"
+        player6 <- insert $ newPlayer jteam "Johannes Kepler"
+        player7 <- insert $ newPlayer jteam "Julian Schwinger"
+        player8 <- insert $ newPlayer jteam "Marie Curie"
+        player9 <- insert $ newPlayer jteam "Isaac Newton"
+        player10 <- insert $ newPlayer jteam "Ludwig Boltzmann"
+        player11 <- insert $ newPlayer jteam "George Smoot"
+        player12 <- insert $ newPlayer jteam "Albert Michelson"
+        player13 <- insert $ newPlayer jteam "Edward Morley"
 
         insert $ FormationPos formation player1 1 $ Just (1,2)
         insert $ FormationPos formation player2 8 $ Just (2,3)
