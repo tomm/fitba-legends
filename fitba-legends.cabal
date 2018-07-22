@@ -78,6 +78,7 @@ executable daemon
                  directory,
                  containers,
                  text,
+                 monad-logger,
                  time,
                  random,
                  fitba-legends
