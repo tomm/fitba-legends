@@ -98,14 +98,12 @@ setupGame kickoffBy homePlayers awayPlayers =
 
 takeGameTurn :: (RandomGen g) => M.Map (Key Player) Player -> GameState -> WriterT String (Random.Rand g) GameState
 takeGameTurn players state = do
-    return state
-{-
     -- players take turns ordered by the tuple (1d(10+speed), positioning, random [0..1])
     playOrder' <- forM (zip [0..] (_players state)) $ \(playerIdx, (playerId, _)) -> do
         let player = players M.! playerId
         randomFactor <- Random.getRandom
         randomSpeed <- lift $ dice 1 (10 + playerSpeed player)
-        return (playerIdx, (randomSpeed, playerPositioning player, randomFactor :: Float))
+        return (playerIdx, (randomSpeed, randomFactor :: Float))
 
     let playOrder = fst <$> Data.List.sortBy playOrderSort playOrder'
 
@@ -116,7 +114,7 @@ takeGameTurn players state = do
     where
         playOrderSort :: Ord a => (Int, a) -> (Int, a) -> Ordering
         playOrderSort (_, a) (_, b) = compare b a
--}
+
 data PlayerMove = Pass PlayerId | Move PlayPitchPos deriving (Show)
 
 takePlayerTurns :: (RandomGen g) => [Int] -> State.StateT GameState (WriterT String (Random.Rand g)) ()

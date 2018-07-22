@@ -16,7 +16,7 @@ library
   default-language: Haskell2010
   exposed-modules: Fitba.Core, Fitba.DB, Fitba.Schema, Fitba.Types,
     Fitba.RandName, Fitba.Utils, Fitba.Settings, Fitba.Match,
-    Fitba.Hash
+    Fitba.Hash, Fitba.TransferMarket, Fitba.Player
   hs-source-dirs:      src
   ghc-options: -Wall
   build-depends: base >=4.9 && <4.10,
@@ -63,6 +63,22 @@ executable test-match
                  MonadRandom >= 0.5,
                  directory,
                  containers,
+                 random,
+                 fitba-legends
+  default-language: Haskell2010
+
+executable daemon
+  main-is: Main.hs
+  hs-source-dirs: src/daemon
+  ghc-options: -Wall
+  build-depends: base >=4.9 && <4.10,
+                 persistent-sqlite >= 2.6,
+                 persistent >= 2.6,
+                 MonadRandom >= 0.5,
+                 directory,
+                 containers,
+                 text,
+                 time,
                  random,
                  fitba-legends
   default-language: Haskell2010

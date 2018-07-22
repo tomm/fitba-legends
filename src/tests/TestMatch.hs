@@ -31,7 +31,7 @@ main = do
 
         liftIO $ print gameState
 
-        doTurns gameState playerMap rng 5
+        doTurns gameState playerMap rng 100
 
     where
         doTurns _ _ _ 0 = return ()
