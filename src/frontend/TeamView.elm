@@ -77,7 +77,7 @@ view state =
                         ([ 
                             Svg.image
                                 [ Svg.Events.onClick <| SelectPlayer Nothing,
-                                  Svg.Attributes.width "100%", Svg.Attributes.height "100%", Svg.Attributes.xlinkHref "/static/pitch.png" ]
+                                  Svg.Attributes.width "100%", Svg.Attributes.height "100%", Svg.Attributes.xlinkHref "/pitch.png" ]
                                 []
                         ] ++
                         -- players

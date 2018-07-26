@@ -12,7 +12,7 @@ type alias PlayerId = Int
 type alias Player = { id: PlayerId, name: String, shooting: Int, passing: Int, tackling: Int,
                       handling: Int, speed: Int, positions: List (Int, Int) }
 type alias TransferListingId = Int
-type TransferStatus = OnSale | YouWon | YouLost | Sold | Unsold
+type TransferStatus = OnSale | Sold | Unsold | YouWon | OutBid | TeamRejected | PlayerRejected | InsufficientMoney
 type alias TransferListing = { id: TransferListingId, minPrice: Int, deadline: Time, sellerTeamId: TeamId,
                                player: Player, youBid: Maybe Int, status: TransferStatus }
 type alias GameId = Int

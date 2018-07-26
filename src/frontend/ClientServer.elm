@@ -86,10 +86,13 @@ jsonDecodeTransferListings =
                 (\val ->
                     case val of
                         "OnSale" -> Json.succeed OnSale
-                        "YouWon" -> Json.succeed YouWon
-                        "YouLost" -> Json.succeed YouLost
                         "Sold" -> Json.succeed Sold
                         "Unsold" -> Json.succeed Unsold
+                        "Won" -> Json.succeed YouWon
+                        "OutBid" -> Json.succeed OutBid
+                        "TeamRejected" -> Json.succeed TeamRejected
+                        "PlayerRejected" -> Json.succeed PlayerRejected
+                        "InsufficientMoney" -> Json.succeed InsufficientMoney
                         _ -> Json.fail <| "Unexpected TransferListing status: " ++ val
                 )
             )

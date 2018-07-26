@@ -1,7 +1,7 @@
 module Fitba.TransferMarket (
   decideTransferMarketBids, spawnNewTransferListings
   ) where
-import System.Random (RandomGen, newStdGen)
+import System.Random (RandomGen, newStdGen, randomR)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad
 import qualified Control.Monad.Random as Random
@@ -145,7 +145,8 @@ resolveTransferListing tl =
 spawnNewTransferListings :: MonadDB a => [T.Text] -> Con a ()
 spawnNewTransferListings surnamePool = do
   g <- liftIO System.Random.newStdGen
-  let maybePlayer = fst $ Random.runRand (maybeRandomPlayer surnamePool) g
+  let (overValue, g') = System.Random.randomR (1.0 :: Float, 1.1 :: Float) g
+      maybePlayer = fst $ Random.runRand (maybeRandomPlayer surnamePool) g'
   case maybePlayer of
     Nothing -> pure ()
     Just player -> do
@@ -153,7 +154,7 @@ spawnNewTransferListings surnamePool = do
       key <- P.insert player
       P.insert $ TransferListing
         key
-        (200000 * playerSkill player)
+        (truncate (overValue * 200000.0 * fromIntegral (playerSkill player)))
         (Data.Time.Clock.addUTCTime (60*60*24) now)
         Nothing
         Nothing

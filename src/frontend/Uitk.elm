@@ -1,8 +1,9 @@
-module Uitk exposing (view, actionButton, backButton, playerPositionBadge)
+module Uitk exposing (view, actionButton, backButton, playerPositionBadge, nbsp)
 
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html exposing (..)
+import Json.Encode
 
 import Types
 
@@ -29,3 +30,6 @@ playerPositionBadge : Types.Player -> Html a
 playerPositionBadge player = 
     let pos = Types.playerPositionFormat player.positions
     in Html.span [class "player-position-badge", class <| "player-position-" ++ pos] [text pos]
+
+nbsp : Html a
+nbsp = span [ property "innerHTML" (Json.Encode.string "&nbsp;") ] []

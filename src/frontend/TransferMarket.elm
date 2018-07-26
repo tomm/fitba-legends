@@ -39,10 +39,13 @@ view ownTeamId state = case state.view of
                                     withdrawButton
                                 ] ]
                         )
-                        YouWon -> div [] [text "You have signed this player."]
-                        YouLost -> div [] [text "You were outbid by another team or the player was not interested in playing for your team."]
                         Sold -> div [] [text "This player has been sold."]
                         Unsold -> div [] [text "No winning bid."]
+                        YouWon -> div [] [text "You have signed this player."]
+                        OutBid -> div [] [text "You were outbid by another team."]
+                        TeamRejected -> div [] [text "The seller rejected your offer."]
+                        PlayerRejected -> div [] [text "The player was not interested in playing for your team."]
+                        InsufficientMoney -> div [] [text "You did not have enough money to conclude the deal."]
                     ]
                 ]
             ]
@@ -59,10 +62,13 @@ view ownTeamId state = case state.view of
                     Html.td [] [text <| Utils.moneyFormat listing.minPrice],
                     Html.td [] [text <| case listing.status of
                         OnSale -> Utils.timeFormatShort listing.deadline
-                        YouWon -> "You won!"
-                        YouLost -> "You lost"
                         Sold -> "Sold"
                         Unsold -> "Unsold"
+                        YouWon -> "You won!"
+                        OutBid -> "Outbid"
+                        TeamRejected -> "Rejected"
+                        PlayerRejected -> "Rejected"
+                        InsufficientMoney -> "No funds"
                     ],
                     Html.td [] [text <|
                         if listing.sellerTeamId == ownTeamId then
