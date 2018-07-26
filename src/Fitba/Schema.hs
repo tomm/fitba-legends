@@ -13,6 +13,8 @@ import Data.ByteString
 import Data.Time.Clock
 
 import qualified Fitba.Types as Types
+import qualified Fitba.TransferListing as TransferListing
+import qualified Fitba.TransferBid as TransferBid
 
 type PitchPos = (Int, Int)
 type Season = Int
@@ -23,6 +25,7 @@ User
     teamId TeamId
     secret ByteString
     UniqueUserName name
+    UniqueTeamId teamId
     deriving Show
 
 Session
@@ -106,13 +109,14 @@ TransferListing
     deadline UTCTime
     winningBidId TransferBidId Maybe
     teamId TeamId Maybe -- seller
-    status Types.TransferListingStatus
+    status TransferListing.Status
     deriving Show
 
 TransferBid
     teamId TeamId
     amount Int
     transferListingId TransferListingId
+    status TransferBid.Status
     UniqueTeamBid teamId transferListingId
     deriving Show Eq
 |]

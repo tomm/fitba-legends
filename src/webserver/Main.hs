@@ -30,6 +30,8 @@ import qualified Fitba.DB as DB
 import qualified Fitba.Types as Types
 import qualified Fitba.Core as Core
 import qualified Fitba.Hash
+import qualified Fitba.TransferListing as TransferListing
+import qualified Fitba.TransferBid as TransferBid
 import Fitba.Schema
 
 data App = App { getStatic :: Static, getDbPool :: DB.ConnectionPool }
@@ -184,7 +186,7 @@ postTransferBidR =
                         Just amount -> do
                             your_bid <- runDB $ getBy (UniqueTeamBid teamId tlId)
                             case your_bid of
-                                Nothing -> void $ runDB $ insert $ TransferBid teamId amount tlId
+                                Nothing -> void $ runDB $ insert $ TransferBid teamId amount tlId TransferBid.Pending
                                 Just bid -> void $ runDB $ E.update $ \b -> do
                                     set b [ TransferBidAmount E.=. E.val amount ]
                                     where_ (b ^. TransferBidId E.==. E.val (entityKey bid))
@@ -213,7 +215,7 @@ postSellPlayerR =
                 active_listings <- runDB $ select $ from $ \tl -> do
                     where_ $
                         (tl ^. TransferListingPlayerId E.==. E.val playerId) &&.
-                        (tl ^. TransferListingStatus E.==. E.val Types.Active)
+                        (tl ^. TransferListingStatus E.==. E.val TransferListing.Active)
                     return (tl ^. TransferListingId)
                 if null active_listings then do
                     runDB $ insert (TransferListing
@@ -222,7 +224,7 @@ postSellPlayerR =
                         (Data.Time.Clock.addUTCTime (60*60*24) now)
                         Nothing
                         (Just teamId)
-                        Types.Active)
+                        TransferListing.Active)
                     return $ object ["status" .= "SUCCESS"]
                 else
                     return $ object ["status" .= "SUCCESS"]
@@ -313,7 +315,7 @@ getTransferListingsR =
                         (E.not_ $ E.isNothing $ ownBid ?. TransferBidId) E.||.
                         (tl ^. TransferListingTeamId E.==. (E.just $ E.val teamId)) E.||.
                         (
-                            (tl ^. TransferListingStatus E.==. E.val Types.Active) E.&&.
+                            (tl ^. TransferListingStatus E.==. E.val TransferListing.Active) E.&&.
                             (tl ^. TransferListingDeadline E.>. E.val now)
                         )
                     )
@@ -329,11 +331,10 @@ getTransferListingsR =
                 "deadline" .= transferListingDeadline tl,
                 "sellerTeamId" .= fromMaybe (toSqlKey 0) (transferListingTeamId tl),
                 "status" .= case transferListingStatus tl of
-                        Types.Active -> "OnSale"
-                        _ -> case fmap entityKey ownBidE of
+                        TransferListing.Active -> "OnSale"
+                        _ -> case ownBidE of
                             Nothing -> show (transferListingStatus tl)  -- 'Sold' or 'Unsold'
-                            justBidId -> if justBidId == transferListingWinningBidId tl then
-                                "YouWon" else "YouLost",
+                            Just ownBid -> (show . transferBidStatus . entityVal) ownBid,
                 "youBid" .= fmap transferBidAmount maybeOwnBid,
                 "player" .= playerToJson playerE
                 ]

@@ -20,9 +20,6 @@ instance ToJSON GameStatus where
 
 data TournRecord = TournRecord { points :: Int, played :: Int, won :: Int, drawn :: Int, lost :: Int, gf :: Int, ga :: Int, gd :: Int  } deriving (Show, Eq)
 
-data TransferListingStatus = Active | Sold | Unsold deriving (Show, Read, Eq)
-derivePersistField "TransferListingStatus"
-
 instance Num TournRecord where
     a + b = TournRecord (points a + points b) (played a + played b) (won a + won b)
                         (drawn a + drawn b) (lost a + lost b) (gf a + gf b)

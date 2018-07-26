@@ -9,11 +9,14 @@ import qualified Data.Text as T
 import qualified Database.Persist as P
 import qualified Data.Time.Clock
 import Data.Foldable (traverse_)
+import Data.IORef
 
 import qualified Fitba.Player
 import Fitba.Schema
 import Fitba.DB (MonadDB, Con)
 import qualified Fitba.Types as Types
+import qualified Fitba.TransferListing as TransferListing
+import qualified Fitba.TransferBid as TransferBid
 import qualified Fitba.Core as Core
 import qualified Data.List
 
@@ -21,7 +24,7 @@ decideTransferMarketBids :: MonadDB a => Con a ()
 decideTransferMarketBids = do
   now <- liftIO Data.Time.Clock.getCurrentTime
   expired <- P.selectList [TransferListingDeadline P.<. now,
-                           TransferListingStatus P.==. Types.Active] []
+                           TransferListingStatus P.==. TransferListing.Active] []
 
   forM_ expired resolveTransferListing
 
@@ -36,31 +39,94 @@ resolveTransferListing tl =
     resolveTransferListing' player = do
       bids <- P.selectList [TransferBidTransferListingId P.==. P.entityKey tl]
                            [P.Desc TransferBidAmount]
-      filterM (canWin tl player) bids >>= \ws -> case ws of
-        winner:_ -> do
-          resolveWinner winner
-          mapM_ resolveLoser $ Data.List.filter (/= winner) bids
-          pure ()
-        [] ->
-          -- no winning bid
-          mapM_ resolveLoser bids
+      gotWinnerRef <- liftIO $ newIORef False
 
-    canWin :: MonadDB a
-           => P.Entity TransferListing -> Player -> P.Entity TransferBid
-           -> Con a Bool
-    canWin tl' player bid' = do
+      forM_ bids $ \bid -> do
+        gotWinner <- liftIO $ readIORef gotWinnerRef
+        status <- resolveBidStatus tl player bid gotWinner
+        P.update (P.entityKey bid) [TransferBidStatus P.=. status]
+        if status == TransferBid.Won then do
+          sellTo tl bid
+          liftIO $ writeIORef gotWinnerRef True
+        else
+          pure ()
+
+      gotWinner <- liftIO $ readIORef gotWinnerRef
+      if not gotWinner then
+        handleNoWinner tl
+      else
+        pure ()
+        
+    -- XXX bad. player auctions always succeed at any min price
+    handleNoWinner :: MonadDB a => P.Entity TransferListing -> Con a ()
+    handleNoWinner tl = 
+      case transferListingTeamId (P.entityVal tl) of
+        Nothing -> unsold
+        Just sellerTeamId -> do
+          maybeUser <- P.getBy $ UniqueTeamId sellerTeamId
+          case maybeUser of
+            Nothing -> unsold
+            Just userEntity -> do
+              P.update (P.entityKey tl) [TransferListingStatus P.=. TransferListing.Sold]
+              P.update sellerTeamId [TeamMoney P.+=. bidMin]
+              P.deleteWhere [FormationPosPlayerId P.==. playerId]
+              P.update playerId [PlayerTeamId P.=. Nothing]
+      where
+        unsold = P.update (P.entityKey tl) [TransferListingStatus P.=. TransferListing.Unsold]
+        playerId = (transferListingPlayerId . P.entityVal) tl
+        bidMin = transferListingMinPrice $ P.entityVal tl
+
+    
+    sellTo :: MonadDB a => P.Entity TransferListing -> P.Entity TransferBid -> Con a ()
+    sellTo tl bid = do
+      case sellerTeamId of
+        Nothing -> pure ()
+        Just sellerTeamId' ->
+          P.get sellerTeamId' >>= \maybeSeller -> case maybeSeller of
+            Nothing -> pure ()
+            Just seller -> do
+              P.update sellerTeamId' [TeamMoney P.+=. bidAmount]
+              P.deleteWhere [FormationPosPlayerId P.==. playerId]
+
+      buyer' <- P.get buyerTeamId
+      case buyer' of
+        Nothing -> pure ()
+        Just buyer -> do
+          P.update buyerTeamId [TeamMoney P.-=. bidAmount]
+          P.update playerId [PlayerTeamId P.=. Just buyerTeamId]
+
+      P.update (P.entityKey tl)
+        [TransferListingWinningBidId P.=. Just (P.entityKey bid),
+         TransferListingStatus P.=. TransferListing.Sold]
+      where
+        sellerTeamId = transferListingTeamId $ P.entityVal tl
+        buyerTeamId = transferBidTeamId $ P.entityVal bid
+        bidAmount = (transferBidAmount . P.entityVal) bid
+        playerId = (transferListingPlayerId . P.entityVal) tl
+
+
+    resolveBidStatus :: MonadDB a
+           => P.Entity TransferListing -> Player -> P.Entity TransferBid -> Bool
+           -> Con a TransferBid.Status
+    resolveBidStatus tl' player bid' gotWinner = do
       let bid = P.entityVal bid'
       maybeBuyerTeam <- P.get $ transferBidTeamId bid
       case maybeBuyerTeam of
-        Nothing -> {- shouldn't happen -} pure False
-        Just buyerTeam -> canWin' tl' player bid buyerTeam
+        Nothing -> {- shouldn't happen -} pure TransferBid.Pending
+        Just buyerTeam -> resolveBidStatus' tl' player bid buyerTeam
       where
-        canWin' tl' player bid buyerTeam = do
+        resolveBidStatus' tl' player bid buyerTeam = do
           starting11 <- getStarting11 (transferBidTeamId bid) (teamFormationId buyerTeam)
-          if transferBidAmount bid >= (transferListingMinPrice . P.entityVal) tl' &&
-             teamMoney buyerTeam >= transferBidAmount bid &&
-             (fromIntegral . playerSkill) player <= averageSkill starting11 * 1.25
-          then pure True else pure False
+          if transferBidAmount bid < (transferListingMinPrice . P.entityVal) tl' then
+            pure TransferBid.TeamRejected
+          else if (fromIntegral . playerSkill) player > averageSkill starting11 * 1.25 then
+            pure TransferBid.PlayerRejected
+          else if teamMoney buyerTeam < transferBidAmount bid then
+            pure TransferBid.InsufficientMoney
+          else if gotWinner then
+            pure TransferBid.OutBid
+          else
+            pure TransferBid.Won
 
     -- XXX could avoid iterating over players twice by keeping count in fold
     averageSkill :: [Player] -> Float
@@ -91,7 +157,7 @@ spawnNewTransferListings surnamePool = do
         (Data.Time.Clock.addUTCTime (60*60*24) now)
         Nothing
         Nothing
-        Types.Active
+        TransferListing.Active
 
       liftIO $ putStrLn $ "Transfer listing created: " ++ show player
 
