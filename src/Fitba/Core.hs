@@ -121,7 +121,7 @@ populateSchema = do
         makeTeam :: DB.MonadDB a => T.Text -> DB.Con a (Key Team)
         makeTeam name = do
             formation <- insert Formation
-            team <- insert $ Team name formation
+            team <- insert $ Team name formation 0
             g <- liftIO newStdGen
             players <- mapM insert $ fst $ Random.runRand (replicateM 22 (makeRandomPlayer team)) g
 

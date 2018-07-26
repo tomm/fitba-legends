@@ -22,7 +22,6 @@ User
     name Text
     teamId TeamId
     secret ByteString
-    money Int
     UniqueUserName name
     deriving Show
 
@@ -41,6 +40,7 @@ League
 Team
     name Text
     formationId FormationId
+    money Int
     deriving Show Eq
 
 TeamLeague
@@ -114,7 +114,7 @@ TransferBid
     amount Int
     transferListingId TransferListingId
     UniqueTeamBid teamId transferListingId
-    deriving Show
+    deriving Show Eq
 |]
 
 playerSkill :: Player -> Int

@@ -241,7 +241,7 @@ getSquadR teamId =
                 Nothing -> notFound
                 Just team ->
                     teamToJson teamId team
-                        ["money" .= userMoney user | userTeamId user == teamId]
+                        ["money" .= teamMoney team | userTeamId user == teamId]
 
 teamToJson :: TeamId -> Team -> [(T.Text, Data.Aeson.Value)] -> HandlerT App IO Yesod.Value
 teamToJson teamId team additionalItems =

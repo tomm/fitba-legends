@@ -33,8 +33,10 @@ oncePerMinute :: DaemonData -> IO ()
 oncePerMinute daemonData = do
   t <- getCurrentTime
   putStrLn $ "New minute! " ++ show t
-  Fitba.TransferMarket.decideTransferMarketBids
-  runDB $ Fitba.TransferMarket.spawnNewTransferListings (surnamePool daemonData)
+  runDB $
+    Fitba.TransferMarket.decideTransferMarketBids
+    >>
+    Fitba.TransferMarket.spawnNewTransferListings (surnamePool daemonData)
 
 oncePerDay :: UTCTime -> IO ()
 oncePerDay t = do

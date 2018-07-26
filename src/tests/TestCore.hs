@@ -54,7 +54,7 @@ testTeamFormationOrdering =
     dbTest $ do
         formation <- insert Formation
         formation2 <- insert Formation -- just to check we don't load from here!
-        team <- insert $ Team "Test team" formation
+        team <- insert $ Team "Test team" formation 0
 
         let newPlayer team name = Player team name 5 5 5 5 5 "[[2,6]]"
         let jteam = Just team
@@ -113,8 +113,7 @@ testGetLeagueTable = do
         league1 <- insert $ League "league 1" 1
         league2 <- insert $ League "league 2" 1
 
-        -- hehe. I is learn haskell
-        let makeTeam name = insert Formation >>= insert . Team name
+        let makeTeam name = insert Formation >>= \f -> insert $ Team name f 0
             season = 1
 
         teamA <- makeTeam "Team A"
