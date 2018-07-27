@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Fitba.Core (
+    currentSeason,
     getLeagueTable,
     makeFixtures,
     populateSchema,
@@ -54,23 +55,29 @@ getPlayersOrdered teamId formationId = do
                                    --                           ^^ Maybe (Maybe a) -> Maybe a
             | otherwise = (p, Nothing)
 
+currentSeason :: DB.MonadDB a => DB.Con a Types.Season
+currentSeason =
+  (E.select $ E.from $ \g -> return (E.max_ (g E.^. GameSeason)))
+  >>= \res -> case res of
+    E.Value (Just season) : _ -> pure season
+    _ -> pure 0
 
 -- ordered descending (ie !!0 is in first place)
-getLeagueTable :: DB.MonadDB a => LeagueId -> DB.Con a [(Entity Team, Types.TournRecord)]
-getLeagueTable leagueId = do
-    -- should replace this all with a big esqueleto query
-    teams <- getTeamsInLeague leagueId
-    points <- mapM (calcTeamPointsAndGoalDiff leagueId) teams
+getLeagueTable :: DB.MonadDB a => LeagueId -> Types.Season -> DB.Con a [(Entity Team, Types.TournRecord)]
+getLeagueTable leagueId season = do
+    teams <- getTeamsInLeague leagueId season
+    points <- mapM (calcTeamPointsAndGoalDiff leagueId season) teams
 
     return $ Data.List.sortBy leagueSort (zip teams points)
 
 leagueSort :: (Entity Team, Types.TournRecord) -> (Entity Team, Types.TournRecord) -> Ordering
 leagueSort (teamA, recA) (teamB, recB) = compare recB recA
 
-calcTeamPointsAndGoalDiff :: DB.MonadDB a => LeagueId -> Entity Team -> DB.Con a Types.TournRecord
-calcTeamPointsAndGoalDiff leagueId team = do
-    games <- selectList ( [GameLeagueId ==.  leagueId, GameStatus ==. Types.Played] ++
-          ([GameHomeTeamId ==. entityKey team] ||. [GameAwayTeamId ==. entityKey team]) ) []
+calcTeamPointsAndGoalDiff :: DB.MonadDB a => LeagueId -> Types.Season -> Entity Team -> DB.Con a Types.TournRecord
+calcTeamPointsAndGoalDiff leagueId season team = do
+    games <- selectList (
+      [GameLeagueId ==.  leagueId, GameStatus ==. Types.Played, GameSeason ==. season] ++
+      ([GameHomeTeamId ==. entityKey team] ||. [GameAwayTeamId ==. entityKey team])) []
     
     return $ foldr ((+) . pointsNGd . entityVal) (Types.TournRecord 0 0 0 0 0 0 0 0) (games :: [Entity Game])
 
@@ -145,15 +152,14 @@ replaceFormationPositions formationId plId_pitchPos = do
     mapM_ (\(idx, (playerId, loc)) -> insert $ FormationPos formationId playerId idx loc)
         $ zip [1..] plId_pitchPos
 
-getTeamsInLeague :: DB.MonadDB a => LeagueId -> DB.Con a [Entity Team]
-getTeamsInLeague leagueId = do
-    teamsLeague <- selectList [TeamLeagueLeagueId ==. leagueId] []
+getTeamsInLeague :: DB.MonadDB a => LeagueId -> Types.Season -> DB.Con a [Entity Team]
+getTeamsInLeague leagueId season = do
+    teamsLeague <- selectList [TeamLeagueLeagueId ==. leagueId, TeamLeagueSeason ==. season] []
     selectList [TeamId <-. map (teamLeagueTeamId . entityVal) (teamsLeague :: [Entity TeamLeague])] []
 
-makeFixtures :: DB.MonadDB a => LeagueId -> Int -> DB.Con a ()
+makeFixtures :: DB.MonadDB a => LeagueId -> Types.Season -> DB.Con a ()
 makeFixtures leagueId seasonNum = do
-    teams <- getTeamsInLeague leagueId
-    --liftIO $ print $ map entityVal (teams :: [Entity Team])
+    teams <- getTeamsInLeague leagueId seasonNum
     let allMatches = do
             teamA <- teams
             teamB <- teams

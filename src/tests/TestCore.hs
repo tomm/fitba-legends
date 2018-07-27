@@ -133,7 +133,7 @@ testGetLeagueTable = do
         Core.makeFixtures league1 season
 
         -- no games played. check the league table is in team id order
-        table <- Core.getLeagueTable league1
+        table <- Core.getLeagueTable league1 season
         assertEq "League table length" 4 (length table)
         assertEq "League table ordering" "Team A" $ (teamName . entityVal . fst) (table!!0)
         assertEq "League table ordering" "Team B" $ (teamName . entityVal . fst) (table!!1)
@@ -147,7 +147,7 @@ testGetLeagueTable = do
         game <- head <$> selectList [GameHomeTeamId ==. teamA, GameAwayTeamId ==. teamB] []
         update (entityKey game) [GameHomeGoals =. 1, GameAwayGoals =. 3, GameStatus =. Types.Played]
 
-        table <- Core.getLeagueTable league1
+        table <- Core.getLeagueTable league1 season
         assertEq "League table length" 4 (length table)
         assertEq "League table ordering" "Team B" $ (teamName . entityVal . fst) (table!!0)
         assertEq "League table ordering" "Team C" $ (teamName . entityVal . fst) (table!!1)
@@ -161,7 +161,7 @@ testGetLeagueTable = do
         game <- head <$> selectList [GameHomeTeamId ==. teamB, GameAwayTeamId ==. teamA] []
         update (entityKey game) [GameHomeGoals =. 2, GameAwayGoals =. 2, GameStatus =. Types.Played]
 
-        table <- Core.getLeagueTable league1
+        table <- Core.getLeagueTable league1 season
         assertEq "League table length" 4 (length table)
         assertEq "League table ordering" "Team B" $ (teamName . entityVal . fst) (table!!0)
         assertEq "League table ordering" "Team A" $ (teamName . entityVal . fst) (table!!1)

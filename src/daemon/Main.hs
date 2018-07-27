@@ -13,6 +13,7 @@ import Database.Persist.Sqlite (runSqlite)
 import Control.Concurrent (threadDelay)
 import System.Exit (exitSuccess)
 
+import qualified Fitba.EndOfSeason
 import qualified Fitba.TransferMarket
 import qualified Fitba.DB as DB
 
@@ -26,7 +27,7 @@ runDB = runSqlite "live.db"
 simulateSeconds :: Integer -> IO ()
 simulateSeconds seconds =
   replicateM_ (fromInteger seconds) $ do
-    -- simulate games
+    -- XXX simulate games
     putStr "."
 
 oncePerMinute :: DaemonData -> IO ()
@@ -34,24 +35,27 @@ oncePerMinute daemonData = do
   t <- getCurrentTime
   putStrLn $ "New minute! " ++ show t
   runDB $
-    Fitba.TransferMarket.decideTransferMarketBids
-    >>
+    Fitba.TransferMarket.decideTransferMarketBids >>
     Fitba.TransferMarket.spawnNewTransferListings (surnamePool daemonData)
 
 oncePerDay :: UTCTime -> IO ()
 oncePerDay t = do
     putStrLn "NEW DAY!!!!!!!!!!!!!"
-    -- end of season resolving
-    -- update team formations
+    runDB Fitba.EndOfSeason.handlePossibleEndOfSeason
+    -- XXX update team formations
     print t
+
+onStartup :: DaemonData -> IO ()
+onStartup d = do
+  putStrLn "First run!"
+  runDB Fitba.EndOfSeason.handlePossibleEndOfSeason
 
 callback :: DaemonData -> IO ()
 callback daemonData = do
   timestamp <- getCurrentTime
   lastRun <- readIORef (lastTick daemonData)
   case lastRun of
-    Nothing ->
-      putStrLn "First run!"
+    Nothing -> onStartup daemonData
     Just t -> do
       --putStrLn $ "Last run at " ++ show t
       simulateSeconds (secondsDiff timestamp t)

@@ -6,6 +6,7 @@ import Data.Text as T
 
 import Database.Persist.TH
 
+type Season = Int
 type FormationPitchPos = (Int, Int)
 
 -- for some reason persistent wants this imported in Schema.hs, not defined locally

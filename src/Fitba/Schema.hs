@@ -17,7 +17,6 @@ import qualified Fitba.TransferListing as TransferListing
 import qualified Fitba.TransferBid as TransferBid
 
 type PitchPos = (Int, Int)
-type Season = Int
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User
@@ -49,7 +48,7 @@ Team
 TeamLeague
     teamId TeamId
     leagueId LeagueId
-    season Int
+    season Types.Season
     UniqueTeamLeagueSeason teamId leagueId season
     deriving Show
 
@@ -84,7 +83,7 @@ Game
     start UTCTime
     homeGoals Int default=0
     awayGoals Int default=0
-    season Int
+    season Types.Season
     deriving Show
 
 GameEvent

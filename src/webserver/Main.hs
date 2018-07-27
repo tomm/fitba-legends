@@ -278,8 +278,9 @@ getLeagueTablesR = do
     authGuard showLeagueTablesFor
     where
         showLeagueTablesFor user = do
+            season <- runDB Core.currentSeason
             leagues <- runDB $ selectList [{-LeagueIsFinished P.==. False-}] []
-            tables <- mapM (runDB . Core.getLeagueTable . entityKey) leagues
+            tables <- mapM (runDB . (flip Core.getLeagueTable season) . entityKey) leagues
             return $ array $ map tableToJson (zip leagues tables)
             where
                 tableToJson (league, table) =
@@ -345,11 +346,14 @@ getFixturesR =
         fixtures <- runDB $ gamesInUserLeague user
         return $ array $ map resultToJsonObj fixtures
     where
-    gamesInUserLeague user =
+    gamesInUserLeague user = do
+        season <- Core.currentSeason
         select $ from $ \(g, t1, t2, teamLeague) -> do
             where_ $
                 (g ^. GameHomeTeamId E.==. t1 ^. TeamId) &&.
                 (g ^. GameAwayTeamId E.==. t2 ^. TeamId) &&.
+                (g ^. GameSeason E.==. E.val season) &&.
+                (teamLeague ^. TeamLeagueSeason E.==. E.val season) &&.
                 (teamLeague ^. TeamLeagueLeagueId E.==. g ^. GameLeagueId) &&.
                 (teamLeague ^. TeamLeagueTeamId E.==. E.val (userTeamId user))
             orderBy [asc (g ^. GameStart)]

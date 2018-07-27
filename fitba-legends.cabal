@@ -17,7 +17,7 @@ library
   exposed-modules: Fitba.Core, Fitba.DB, Fitba.Schema, Fitba.Types,
     Fitba.RandName, Fitba.Utils, Fitba.Settings, Fitba.Match,
     Fitba.Hash, Fitba.TransferMarket, Fitba.Player, Fitba.TransferListing,
-    Fitba.TransferBid
+    Fitba.TransferBid, Fitba.EndOfSeason
   hs-source-dirs:      src
   ghc-options: -Wall
   build-depends: base >=4.9 && <4.10,
