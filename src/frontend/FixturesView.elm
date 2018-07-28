@@ -123,7 +123,7 @@ drawPitch game maybeEv =
         [Svg.Attributes.width "100%", Svg.Attributes.height "100%", viewBox "0 0 812 515" ]
         ([ 
             Svg.image
-                [Svg.Attributes.width "100%", Svg.Attributes.height "100%", Svg.Attributes.xlinkHref "/pitch_h.png" ]
+                [Svg.Attributes.width "100%", Svg.Attributes.height "100%", Svg.Attributes.xlinkHref "/static/pitch_h.png" ]
                 []
         ] ++
             (case maybeEv of
