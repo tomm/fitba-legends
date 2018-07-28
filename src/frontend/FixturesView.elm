@@ -2,8 +2,9 @@ module FixturesView exposing (view, update)
 
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
-import Html exposing (Html, Attribute, div, input, table, tr, td, th, text, ul, li, button)
+import Html exposing (Html, Attribute, div, input, span, table, tr, td, th, text, ul, h3, li, button)
 import Svg
+import Date
 import Svg.Attributes exposing (..)
 import Time exposing (Time)
 
@@ -187,18 +188,30 @@ fixturesTable model =
                 Scheduled -> text "Scheduled"
                 InProgress -> text "In Progress!"
                 Played result -> text (toString result.homeGoals ++ " : " ++ toString result.awayGoals)
-    in
-        table
-            []
-            ([
-                tr [] [
-                    th [] [text "Game"],
-                    th [] [text "Date"],
-                    th [] [text "Result"]
+
+        fixtureTable title fixtures = 
+            div [] [
+                h3 [] [text title],
+                table [] ([
+                        tr [] [
+                            th [] [text "Game"],
+                            th [] [text "Date"],
+                            th [] [text "Result"]
+                        ]
+                    ] ++
+                    List.map fixtureRow fixtures
+                    )
                 ]
-            ] ++
-            List.map fixtureRow model.fixtures
-            )
+    in
+        div [] [
+            case model.currentTime of
+                Nothing -> span [] []
+                Just now -> 
+                    fixtureTable "Today's Matches"
+                        (List.filter (\f -> Utils.dateEq (Date.fromTime f.start) (Date.fromTime now)) model.fixtures)
+            ,
+            fixtureTable "Season Fixtures" model.fixtures
+        ]
 
 update : Msg -> Model -> (Model, Cmd RootMsg.Msg)
 update msg model =

@@ -1,9 +1,14 @@
-module Utils exposing (dateFormat, timeFormat, moneyFormat, timeFormatShort)
+module Utils exposing (dateEq, dateFormat, timeFormat, moneyFormat, timeFormatShort)
 
 import Time
 import Date
 import String
 import List
+
+dateEq : Date.Date -> Date.Date -> Bool
+dateEq a b = Date.year a == Date.year b &&
+             Date.month a == Date.month b &&
+             Date.day a == Date.day b
 
 dateFormat : Date.Date -> String
 dateFormat d =

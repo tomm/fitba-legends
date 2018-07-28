@@ -75,6 +75,7 @@ update msg model =
                     Ok team -> ({model | state=GameData {ourTeamId = team.id,
                                  tab = TabTeam { team = team, view = TeamViewTypes.SquadView { selectedPlayer = Nothing } },
                                  ourTeam = team,
+                                 currentTime = Nothing,
                                  fixtures = [],
                                  leagueTables = []
                                 }}, Cmd.batch [getFixtures, getLeagueTables])
@@ -104,7 +105,8 @@ update msg model =
                     Err error -> handleHttpError error model
                 ClockTick t ->
                     let (state, cmd) = FixturesView.update FixturesViewMsg.GameTick m
-                    in ({ model | state = GameData state}, cmd)
+                        state2 = { state | currentTime = Just t }
+                    in ({ model | state = GameData state2}, cmd)
                 MsgTeamView msg -> case m.tab of
                     TabTeam state ->
                         let (newState, cmd) = TeamView.update msg state

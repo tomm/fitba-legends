@@ -29,6 +29,7 @@ type RootState = Loading | GameData Model
 
 type alias Model = {
     ourTeamId: TeamId,
+    currentTime: Maybe Time.Time,
     tab: UiTab,
     ourTeam : Team,
     fixtures: List Fixture,
