@@ -8,9 +8,12 @@ import TeamViewTypes
 import FixturesViewMsg
 import TransferMarketTypes
 import Types exposing (..)
+import Notification
 
 type Msg
-  = ChangeTab UiTab | MsgTeamView TeamViewTypes.Msg | ClockTick Time.Time
+  = ChangeTab UiTab | MsgTeamView TeamViewTypes.Msg
+  | SecondTick Time.Time
+  | MinuteTick Time.Time
   | MsgFixturesView FixturesViewMsg.Msg
   | MsgTransferMarket TransferMarketTypes.Msg
   | UpdateFixtures (Result Http.Error (List Fixture))
@@ -25,3 +28,5 @@ type Msg
   | GotTransferListings (Result Http.Error (List Types.TransferListing))
   | SellPlayerResponse (Result Http.Error String)
   | NoOp
+  | RequestNotificationPermissionResult Notification.Permission
+  | NotificationResult (Result Notification.Error ())

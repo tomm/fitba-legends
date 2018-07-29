@@ -2,21 +2,26 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Fitba.Match where
 
-import qualified Data.Text as T
-import qualified Control.Monad.Random as Random
-import qualified Data.Map.Strict as M
-import Control.Monad.Trans.Writer.Strict (WriterT, runWriterT, tell)
-import Control.Monad.Trans.Class (lift)
-import System.Random (RandomGen)
-import Control.Monad.State as State
-import Database.Persist.Sqlite
-import qualified Data.List
-import Data.Maybe
 import Control.Monad
-import Text.Printf (printf)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.State as State
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Writer.Strict (WriterT, runWriterT, tell)
+import Database.Persist.Sqlite
+import Data.Maybe
+import Data.Time.Clock
 import Lens.Micro
 import Lens.Micro.TH
+import qualified Control.Monad.Random as Random
+import qualified Database.Esqueleto as E
+import qualified Database.Persist as P
+import qualified Data.List
+import qualified Data.Map.Strict as M
+import qualified Data.Text as T
+import System.Random (RandomGen)
+import Text.Printf (printf)
 
+import Fitba.DB
 import Fitba.Schema
 import qualified Fitba.Core as Core
 import qualified Fitba.Types as Types
@@ -53,6 +58,13 @@ instance Show GameState where
             ball x y = if (x, y) == _ballPos g then "|*" else "| "
         in "Ball: " ++ show (_ballState g) ++ ", pitch:\n" ++ (showPitch . playersOnTiles) (_players g)
 
+simulatePendingGames :: MonadDB a => Con a ()
+simulatePendingGames = do
+  now <- liftIO $ Data.Time.Clock.getCurrentTime
+  games <- P.selectList [GameStatus P.!=. Types.Played,
+                         GameStart P.<. now] []
+  
+  liftIO $ putStrLn $ (show (length games)) ++ " games to simulate."
 
 playersOnTiles :: [PlayerState] -> [[[PlayerId]]]
 playersOnTiles ps = do

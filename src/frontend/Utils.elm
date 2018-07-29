@@ -1,9 +1,17 @@
-module Utils exposing (dateEq, dateFormat, timeFormat, moneyFormat, timeFormatShort)
+module Utils exposing (dateEq, timeEqYYMMDDHHMM, dateFormat, timeFormat, moneyFormat, timeFormatShort)
 
 import Time
 import Date
 import String
 import List
+
+timeEqYYMMDDHHMM : Time.Time -> Time.Time -> Bool
+timeEqYYMMDDHHMM t1 t2 =
+    let d1 = Date.fromTime t1
+        d2 = Date.fromTime t2
+    in dateEq d1 d2 &&
+       (Date.hour d1 == Date.hour d2) &&
+       (Date.minute d1 == Date.minute d2)
 
 dateEq : Date.Date -> Date.Date -> Bool
 dateEq a b = Date.year a == Date.year b &&

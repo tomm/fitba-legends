@@ -16,6 +16,7 @@ import System.Exit (exitSuccess)
 import qualified Fitba.EndOfSeason
 import qualified Fitba.TransferMarket
 import qualified Fitba.DB as DB
+import qualified Fitba.Match
 
 data DaemonData = DaemonData {
   surnamePool :: [T.Text],
@@ -25,10 +26,7 @@ data DaemonData = DaemonData {
 runDB = runSqlite "live.db"
 
 simulateSeconds :: Integer -> IO ()
-simulateSeconds seconds =
-  replicateM_ (fromInteger seconds) $ do
-    -- XXX simulate games
-    putStr "."
+simulateSeconds seconds = runDB Fitba.Match.simulatePendingGames
 
 oncePerMinute :: DaemonData -> IO ()
 oncePerMinute daemonData = do

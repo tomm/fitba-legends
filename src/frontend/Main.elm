@@ -15,6 +15,8 @@ import Navigation
 import Svg
 import Task
 import Time
+import Notification
+import Notification exposing (defaultOptions)
 
 import Uitk
 import Utils
@@ -40,15 +42,21 @@ main =
     }
 
 init : (RootModel, Cmd Msg)
-init = ({ errorMsg=Nothing, state=Loading}, getStartGameData)
+init = (
+        { errorMsg=Nothing, state=Loading},
+        Cmd.batch [
+            getStartGameData,
+            Task.perform RequestNotificationPermissionResult Notification.requestPermission
+        ]
+    )
 
 -- SUBSCRIPTIONS
 
 subscriptions : RootModel -> Sub Msg
 subscriptions model = Sub.batch [
-        Time.every Time.second ClockTick
+        Time.every Time.second SecondTick,
+        Time.every Time.minute MinuteTick
     ]
-
 
 -- UPDATE
 
@@ -61,6 +69,27 @@ handleHttpError error model =
             else
                 ({model | errorMsg = Just <| toString response}, Cmd.none)
         _ -> ({model | errorMsg = Just <| toString error}, Cmd.none)
+
+popupNotification : String -> String -> Cmd Msg
+popupNotification title body =
+    Notification.Notification title { defaultOptions | body = Just body }
+        |> Notification.create |> Task.attempt NotificationResult
+
+maybeNotifyGameStarting : Model -> Time.Time -> Cmd Msg
+maybeNotifyGameStarting model now =
+    let ownGameStarting fixture =
+            (   (fixture.homeName == model.ourTeam.name) ||
+                (fixture.awayName == model.ourTeam.name)
+            ) && Utils.timeEqYYMMDDHHMM now (fixture.start - 5*Time.minute)
+        opponent fixture =
+            if fixture.homeName == model.ourTeam.name then
+            fixture.awayName else fixture.homeName
+        nextOwnFixture = List.head <| List.filter ownGameStarting model.fixtures
+    in
+        case nextOwnFixture of
+            Nothing -> Cmd.none
+            Just fixture -> popupNotification "Fitba" <|
+                "Your game against " ++ opponent fixture ++ " will start in 5 minutes"
 
 update : Msg -> RootModel -> (RootModel, Cmd Msg)
 update msg model =
@@ -80,9 +109,12 @@ update msg model =
                                  leagueTables = []
                                 }}, Cmd.batch [getFixtures, getLeagueTables])
                     Err error -> handleHttpError error model
+                RequestNotificationPermissionResult _ -> (model, Cmd.none)
                 _ -> ({model | errorMsg = Just "Unexpected message while loading ..."}, Cmd.none)
         handleActiveStateMsgs m =
             case msg of
+                RequestNotificationPermissionResult _ -> (model, Cmd.none)
+                NotificationResult _ -> (model, Cmd.none)
                 ChangeTab tab ->
                     let cmd = case tab of
                         -- fetch updated poop
@@ -90,7 +122,7 @@ update msg model =
                         TabLeagueTables -> getLeagueTables
                         TabTeam _ -> getStartGameData
                         _ -> Cmd.none
-                    in updateStateCmd { m | tab = tab } cmd
+                    in updateStateCmd { m | tab = tab } (Cmd.batch [cmd, popupNotification "Hello" "Hello nonce"])
                 ViewTransferMarket -> (model, ClientServer.loadTransferListings)
                 GotTransferListings result -> case result of
                     Ok listings -> updateState { m | tab = TabTransferMarket {
@@ -103,10 +135,12 @@ update msg model =
                         view = TeamViewTypes.SquadView { selectedPlayer = Nothing }
                     } }
                     Err error -> handleHttpError error model
-                ClockTick t ->
+                SecondTick t ->
                     let (state, cmd) = FixturesView.update FixturesViewMsg.GameTick m
                         state2 = { state | currentTime = Just t }
                     in ({ model | state = GameData state2}, cmd)
+                MinuteTick t ->
+                    (model, maybeNotifyGameStarting m t)
                 MsgTeamView msg -> case m.tab of
                     TabTeam state ->
                         let (newState, cmd) = TeamView.update msg state
