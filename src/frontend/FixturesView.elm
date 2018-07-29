@@ -232,8 +232,15 @@ update msg model =
             GameTick -> case model.tab of
                 TabFixtures (Just watchingGame) ->
                     let cmds = case List.head <| List.reverse watchingGame.game.events of
-                        -- No game events yet. poll
-                        Nothing -> Cmd.batch [ClientServer.pollGameEvents watchingGame.game.id Nothing]
+                        Nothing ->
+                            case model.currentTime of
+                                Just now ->
+                                    if now >= watchingGame.game.start then
+                                        -- game should have started. poll for events
+                                        Cmd.batch [ClientServer.pollGameEvents watchingGame.game.id Nothing]
+                                    else
+                                        Cmd.none
+                                Nothing -> Cmd.none
                         Just e -> 
                             if e.kind == EndOfGame then
                                 -- game ended. stop polling
