@@ -122,7 +122,7 @@ update msg model =
                         TabLeagueTables -> getLeagueTables
                         TabTeam _ -> getStartGameData
                         _ -> Cmd.none
-                    in updateStateCmd { m | tab = tab } (Cmd.batch [cmd, popupNotification "Hello" "Hello nonce"])
+                    in updateStateCmd { m | tab = tab } cmd
                 ViewTransferMarket -> (model, ClientServer.loadTransferListings)
                 GotTransferListings result -> case result of
                     Ok listings -> updateState { m | tab = TabTransferMarket {
