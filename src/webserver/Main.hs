@@ -32,6 +32,7 @@ import qualified Fitba.Core as Core
 import qualified Fitba.Hash
 import qualified Fitba.TransferListing as TransferListing
 import qualified Fitba.TransferBid as TransferBid
+import qualified Fitba.Config
 import Fitba.Schema
 
 data App = App { getStatic :: Static, getDbPool :: DB.ConnectionPool }
@@ -449,10 +450,15 @@ gameEventToJson (e, maybePlayerName) =
             "playerName" .= unValue maybePlayerName
             ]
 
+connectionString :: BS.ByteString
+connectionString = "postgresql://tom:password@localhost/fitba_live?connect_timeout=0&application_name=fitba"
+
 main :: IO ()
 main = do
-    static' <- static "static"
+  config <- Fitba.Config.load
+  static' <- static "static"
 
-    -- If you have no live.db then run tests and copy test.db to live.db
-    DB.getPool "live.db" 4 $ \pool ->
-        liftIO $ warp 3001 $ App static' pool
+  -- If you have no live.db then run tests and copy test.db to live.db
+  DB.getPool (Fitba.Config.liveDb config) 4 $ \pool -> do
+    runSqlPool (runMigration migrateAll) pool
+    liftIO $ warp 3001 $ App static' pool

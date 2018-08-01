@@ -1,0 +1,2 @@
+liveDb: postgresql://user:password@localhost/fitba_live?connect_timeout=0&application_name=fitba
+testDb: postgresql://user:password@localhost/fitba_test?connect_timeout=0&application_name=fitba

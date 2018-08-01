@@ -9,7 +9,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad
-import Database.Persist.Sqlite (runSqlite)
+import Database.Persist.Postgresql
 import Control.Concurrent (threadDelay)
 import System.Exit (exitSuccess)
 
@@ -17,50 +17,49 @@ import qualified Fitba.EndOfSeason
 import qualified Fitba.TransferMarket
 import qualified Fitba.DB as DB
 import qualified Fitba.Match
+import qualified Fitba.Config
 
 data DaemonData = DaemonData {
   surnamePool :: [T.Text],
   lastTick :: IORef (Maybe UTCTime)
   }
 
-runDB = runSqlite "live.db"
+simulateSeconds :: DB.MonadDB a => DaemonData -> Integer -> DB.Con a ()
+simulateSeconds daemonData seconds = Fitba.Match.simulatePendingGames
 
-simulateSeconds :: Integer -> IO ()
-simulateSeconds seconds = runDB Fitba.Match.simulatePendingGames
-
-oncePerMinute :: DaemonData -> IO ()
+oncePerMinute :: DB.MonadDB a => DaemonData -> DB.Con a ()
 oncePerMinute daemonData = do
-  t <- getCurrentTime
-  putStrLn $ "New minute! " ++ show t
-  runDB $
-    Fitba.TransferMarket.decideTransferMarketBids >>
-    Fitba.TransferMarket.spawnNewTransferListings (surnamePool daemonData)
+  t <- liftIO getCurrentTime
+  liftIO $ putStrLn $ "New minute! " ++ show t
+  Fitba.TransferMarket.decideTransferMarketBids
+  Fitba.TransferMarket.spawnNewTransferListings (surnamePool daemonData)
 
-oncePerDay :: UTCTime -> IO ()
-oncePerDay t = do
-    putStrLn "NEW DAY!!!!!!!!!!!!!"
-    runDB Fitba.EndOfSeason.handlePossibleEndOfSeason
+oncePerDay :: DB.MonadDB a => DaemonData -> UTCTime -> DB.Con a ()
+oncePerDay daemonData t = do
+    liftIO $ putStrLn "NEW DAY!!!!!!!!!!!!!"
+    Fitba.EndOfSeason.handlePossibleEndOfSeason
     -- XXX update team formations
-    print t
 
-onStartup :: DaemonData -> IO ()
-onStartup d = do
-  putStrLn "First run!"
-  runDB Fitba.EndOfSeason.handlePossibleEndOfSeason
+onStartup :: DB.MonadDB a => DaemonData -> DB.Con a ()
+onStartup daemonData = do
+  liftIO $ putStrLn "First run!"
+  Fitba.EndOfSeason.handlePossibleEndOfSeason
 
-callback :: DaemonData -> IO ()
-callback daemonData = do
-  timestamp <- getCurrentTime
-  lastRun <- readIORef (lastTick daemonData)
-  case lastRun of
-    Nothing -> onStartup daemonData
-    Just t -> do
-      --putStrLn $ "Last run at " ++ show t
-      simulateSeconds (secondsDiff timestamp t)
-      if minutesDiff timestamp t > 0 then oncePerMinute daemonData else pure ()
-      when (dayChanged t timestamp) $ oncePerDay timestamp
+loop :: DB.MonadDB a => DaemonData -> DB.Con a ()
+loop daemonData =
+  forever $ do
+    timestamp <- liftIO getCurrentTime
+    lastRun <- liftIO $ readIORef (lastTick daemonData)
+    case lastRun of
+      Nothing -> onStartup daemonData
+      Just t -> do
+        --putStrLn $ "Last run at " ++ show t
+        simulateSeconds daemonData (secondsDiff timestamp t)
+        if minutesDiff timestamp t > 0 then oncePerMinute daemonData else pure ()
+        when (dayChanged t timestamp) $ oncePerDay daemonData timestamp
 
-  writeIORef (lastTick daemonData) $ Just timestamp
+    liftIO $ writeIORef (lastTick daemonData) $ Just timestamp
+    liftIO $ threadDelay 250000
 
   where
     secondsDiff :: UTCTime -> UTCTime -> Integer
@@ -78,6 +77,8 @@ callback daemonData = do
 
 main :: IO ()
 main = do
+  config <- Fitba.Config.load
   surnames <- T.splitOn "\n" <$> TIO.readFile "surname.txt"
   newIORef Nothing >>= \ref ->
-    forever $ threadDelay 250000 >> callback (DaemonData surnames ref)
+    DB.getPool (Fitba.Config.liveDb config) 1 $ \pool ->
+      runSqlPool (loop (DaemonData surnames ref)) pool

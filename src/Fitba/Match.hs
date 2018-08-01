@@ -7,11 +7,11 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.State as State
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Writer.Strict (WriterT, runWriterT, tell)
-import Database.Persist.Sqlite
 import Data.Maybe
 import Data.Time.Clock
 import Lens.Micro
 import Lens.Micro.TH
+import Database.Persist.Postgresql
 import qualified Control.Monad.Random as Random
 import qualified Database.Esqueleto as E
 import qualified Database.Persist as P

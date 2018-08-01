@@ -10,13 +10,13 @@ module Fitba.Core (
 
 import Control.Monad
 import Control.Monad.IO.Class (liftIO)
-import Database.Persist.Sqlite
 import Data.Maybe
 import Data.Time.Calendar as Calendar
 import Data.Time.Clock as Clock
 import qualified Control.Arrow as Arrow
 import qualified Control.Monad.Random as Random
 import qualified Database.Esqueleto as E
+import Database.Persist.Postgresql
 import qualified Data.List (sortBy)
 import qualified Data.Text as T
 import System.Random (RandomGen, newStdGen)

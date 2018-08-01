@@ -6,8 +6,7 @@ module Fitba.Settings where
 import Control.Monad.Catch (catch, throwM)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad (void)
-import Database.Persist.Sqlite
-import Database.Sqlite (seError, SqliteException, Error(ErrorConstraint))
+import Database.Persist.Postgresql
 import Data.Text (Text)
 
 import Fitba.DB (MonadDB, Con)

@@ -5,8 +5,8 @@ module Main where
 import Control.Exception ( Exception, catch, throw, throwIO )
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad (unless, when)
-import Database.Persist.Sqlite
 import Prelude hiding ( catch )
+import Database.Persist.Postgresql
 import System.Exit (exitFailure, exitSuccess)
 import Control.Applicative ((<$>))
 import Data.Maybe

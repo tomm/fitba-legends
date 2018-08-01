@@ -6,16 +6,16 @@ import Control.Monad.Logger (NoLoggingT, runStderrLoggingT, MonadLogger)
 import Control.Monad.Trans.Reader (ReaderT)
 import Control.Monad.Trans.Resource (ResourceT, MonadBaseControl)
 import Control.Monad.IO.Class (MonadIO)
-import Database.Persist.Sqlite
+import Database.Persist.Postgresql
 import Control.Monad.Catch (MonadCatch)
 
 import qualified Fitba.Schema as Schema
 
 type MonadDB a = (MonadIO a, MonadCatch a, MonadLogger a)  -- needs ConstraintKinds
 type Con a b = ReaderT SqlBackend a b
-type ConnectionPool = Database.Persist.Sqlite.ConnectionPool
+type ConnectionPool = Database.Persist.Postgresql.ConnectionPool
 
-getPool dbFile maxConns f = runStderrLoggingT $ withSqlitePool dbFile maxConns f
+getPool connString maxConns f = runStderrLoggingT $ withPostgresqlPool connString maxConns f
 
 getFixtures :: MonadDB a => Con a [Entity Schema.Game]
 getFixtures = do
