@@ -43,7 +43,9 @@ getPlayersOrdered teamId formationId = do
             E.on ((E.just (p E.^. PlayerId) E.==. fp E.?. FormationPosPlayerId) E.&&.
                   ((fp E.?. FormationPosFormationId) E.==. E.just (E.val formationId)))
             E.where_ (p E.^. PlayerTeamId E.==. E.just (E.val teamId))
-            E.orderBy [E.asc (E.isNothing $ fp E.?. FormationPosId), E.asc (fp E.?. FormationPosPositionNum)]
+            E.orderBy [E.asc (E.isNothing $ fp E.?. FormationPosId),
+                       E.asc (fp E.?. FormationPosPositionNum),
+                       E.asc (p E.^. PlayerId)]
             return (p, fp E.?. FormationPosPositionLoc)
 
     return $ map munge $ zip [0..] results
