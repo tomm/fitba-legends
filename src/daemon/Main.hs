@@ -25,7 +25,9 @@ data DaemonData = DaemonData {
   }
 
 simulateSeconds :: DB.MonadDB a => DaemonData -> Integer -> DB.Con a ()
-simulateSeconds daemonData seconds = Fitba.Match.simulatePendingGames
+simulateSeconds daemonData seconds =
+  --XXX Fitba.Match.simulatePendingGames
+  transactionSave
 
 oncePerMinute :: DB.MonadDB a => DaemonData -> DB.Con a ()
 oncePerMinute daemonData = do
@@ -33,17 +35,20 @@ oncePerMinute daemonData = do
   liftIO $ putStrLn $ "New minute! " ++ show t
   Fitba.TransferMarket.decideTransferMarketBids
   Fitba.TransferMarket.spawnNewTransferListings (surnamePool daemonData)
+  transactionSave
 
 oncePerDay :: DB.MonadDB a => DaemonData -> UTCTime -> DB.Con a ()
 oncePerDay daemonData t = do
-    liftIO $ putStrLn "NEW DAY!!!!!!!!!!!!!"
-    Fitba.EndOfSeason.handlePossibleEndOfSeason
-    -- XXX update team formations
+  liftIO $ putStrLn "NEW DAY!!!!!!!!!!!!!"
+  Fitba.EndOfSeason.handlePossibleEndOfSeason
+  -- XXX update team formations
+  transactionSave
 
 onStartup :: DB.MonadDB a => DaemonData -> DB.Con a ()
 onStartup daemonData = do
   liftIO $ putStrLn "First run!"
   Fitba.EndOfSeason.handlePossibleEndOfSeason
+  transactionSave
 
 loop :: DB.MonadDB a => DaemonData -> DB.Con a ()
 loop daemonData =
@@ -54,7 +59,9 @@ loop daemonData =
       Nothing -> onStartup daemonData
       Just t -> do
         --putStrLn $ "Last run at " ++ show t
-        simulateSeconds daemonData (secondsDiff timestamp t)
+        case secondsDiff timestamp t of
+          0 -> pure ()
+          s -> simulateSeconds daemonData s
         if minutesDiff timestamp t > 0 then oncePerMinute daemonData else pure ()
         when (dayChanged t timestamp) $ oncePerDay daemonData timestamp
 
