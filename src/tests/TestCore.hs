@@ -10,12 +10,14 @@ import Database.Persist.Postgresql
 import System.Exit (exitFailure, exitSuccess)
 import Control.Applicative ((<$>))
 import Data.Maybe
+import qualified Data.Text as T
 
 import qualified Fitba.DB as DB
 import Fitba.Schema
 import qualified Fitba.Core as Core
 import qualified Fitba.Settings as Settings
 import qualified Fitba.Types as Types
+import qualified Fitba.AIManager as AIManager
 import DbTest
 
 type IOTest = IO ()
@@ -32,6 +34,7 @@ main = do
     testSettings
     testGetLeagueTable
     testTeamFormationOrdering
+    testAIManagerPickFormation
     -- leave this one last, so test run leaves a populated test.db file
     testPopulateSchema
 
@@ -48,6 +51,35 @@ testSettings =
         Settings.get "season" >>= assertEq "Settings.get new record" (Just "1922")
         Settings.set "season" "1923"
         Settings.get "season" >>= assertEq "Settings.get updated record" (Just "1923")
+
+testAIManagerPickFormation :: IOTest
+testAIManagerPickFormation =
+    dbTest $ do
+        formation <- insert Formation
+        team <- insert $ Team "Test team" formation 0
+        let newPlayer team name s positions = Player team name s s s s s positions
+            jteam = Just team
+        _ <- insert $ newPlayer jteam "CF2" 5 "[[3,1]]"
+        _ <- insert $ newPlayer jteam "ML1" 5 "[[0,3]]"
+        _ <- insert $ newPlayer jteam "MC1" 5 "[[1,3]]"
+        _ <- insert $ newPlayer jteam "MC2" 5 "[[3,3]]"
+        _ <- insert $ newPlayer jteam "MR1" 5 "[[4,3]]"
+        _ <- insert $ newPlayer jteam "CF1" 5 "[[1,1]]"
+        _ <- insert $ newPlayer jteam "NA2" 7 "[]"
+        _ <- insert $ newPlayer jteam "GK1" 5 "[[2,6]]"
+        _ <- insert $ newPlayer jteam "DML1" 6 "[[0,4]]"
+        _ <- insert $ newPlayer jteam "DC1" 5 "[[1,5]]"
+        _ <- insert $ newPlayer jteam "DC2" 5 "[[3,5]]"
+        _ <- insert $ newPlayer jteam "DR1" 5 "[[4,5]]"
+        _ <- insert $ newPlayer jteam "GK2" 6 "[[2,6]]"
+
+        players <- selectList [] []
+
+        let squadPositions = AIManager.pickFormation players
+
+        -- should have picked 442
+        assertEq "AIManager.pickFormation" "GK2,DML1,DC1,DC2,DR1,ML1,MC1,MC2,MR1,CF1,CF2" $ 
+          T.intercalate "," $ map (playerName . entityVal . fst) squadPositions
 
 testTeamFormationOrdering :: IOTest
 testTeamFormationOrdering =

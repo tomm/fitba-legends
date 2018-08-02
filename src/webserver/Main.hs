@@ -33,6 +33,7 @@ import qualified Fitba.Hash
 import qualified Fitba.TransferListing as TransferListing
 import qualified Fitba.TransferBid as TransferBid
 import qualified Fitba.Config
+import Fitba.Player (playerSkill, playerPositionsList)
 import Fitba.Schema
 
 data App = App { getStatic :: Static, getDbPool :: DB.ConnectionPool }
@@ -221,7 +222,7 @@ postSellPlayerR =
                 if null active_listings then do
                     runDB $ insert (TransferListing
                         playerId
-                        (200000 * playerSkill (entityVal player))
+                        (200000 * Fitba.Player.playerSkill (entityVal player))
                         (Data.Time.Clock.addUTCTime (60*60*24) now)
                         Nothing
                         (Just teamId)
@@ -266,13 +267,6 @@ playerToJson p =
             "positions" .= (playerPositionsList . entityVal) p,
             "id" .= (fromSqlKey . entityKey) p]
     where
-        playerPositionsList :: Player -> [Types.FormationPitchPos]
-        playerPositionsList p =
-            let pos :: BS.ByteString --T.Text
-                pos = playerPositions p
-            in  case Data.Aeson.decodeStrict pos of
-                Nothing -> []
-                Just ps -> ps
 
 getLeagueTablesR :: HandlerT App IO Yesod.Value
 getLeagueTablesR = do

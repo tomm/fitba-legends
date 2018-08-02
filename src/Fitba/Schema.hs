@@ -119,7 +119,3 @@ TransferBid
     UniqueTeamBid teamId transferListingId
     deriving Show Eq
 |]
-
-playerSkill :: Player -> Int
-playerSkill p = playerShooting p + playerPassing p + playerTackling p +
-    playerHandling p + playerShooting p

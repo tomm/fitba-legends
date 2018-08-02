@@ -10,6 +10,7 @@ import Data.Maybe
 
 import Fitba.Schema
 import qualified Fitba.Utils
+import qualified Fitba.Types as Types
 
 makeRandom :: (RandomGen g) => Int -> Int -> [T.Text] -> (Random.Rand g) Player
 makeRandom skillMin skillMax surnamePool =
@@ -63,3 +64,15 @@ setPlayerPositions player = do
 
 randPlayerName :: (RandomGen g) => [T.Text] -> (Random.Rand g) T.Text
 randPlayerName surnamePool = Random.uniform surnamePool
+
+playerSkill :: Player -> Int
+playerSkill p = playerShooting p + playerPassing p + playerTackling p +
+    playerHandling p + playerShooting p
+
+playerPositionsList :: Player -> [Types.FormationPitchPos]
+playerPositionsList p =
+  let pos :: BS.ByteString --T.Text
+      pos = playerPositions p
+  in  case Data.Aeson.decodeStrict pos of
+      Nothing -> []
+      Just ps -> ps

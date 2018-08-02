@@ -5,7 +5,8 @@ module Fitba.Core (
     makeFixtures,
     populateSchema,
     getPlayersOrdered,
-    replaceFormationPositions
+    replaceFormationPositions,
+    updateNpcTeamFormations
 ) where
 
 import Control.Monad
@@ -27,6 +28,7 @@ import qualified Fitba.RandName as RandName
 import qualified Fitba.Settings as Settings
 import qualified Fitba.Types as Types
 import qualified Fitba.Utils as Utils
+import qualified Fitba.AIManager as AIManager
 
 formation442 = [
     (2, 6), -- gk
@@ -35,6 +37,23 @@ formation442 = [
     (1, 1), (3, 1) 
     ]
 
+npcTeams :: DB.MonadDB a => DB.Con a [Entity Team]
+npcTeams =
+    E.select $
+        E.from $ \(t `E.LeftOuterJoin` u) -> do
+            E.on (E.just (t E.^. TeamId) E.==. u E.?. UserTeamId)
+            E.where_ (E.isNothing (u E.?. UserId))
+            return t
+
+updateNpcTeamFormations :: DB.MonadDB a => DB.Con a ()
+updateNpcTeamFormations = do
+    teams <- npcTeams
+    forM_ teams $ \team -> do
+        players <- selectList [PlayerTeamId ==. Just (entityKey team)] []
+        replaceFormationPositions
+            (teamFormationId $ entityVal team)
+            (map (Arrow.first entityKey) (AIManager.pickFormation players))
+     
 -- ordered GK first, then 10 on pitch, reserves, etc
 getPlayersOrdered :: DB.MonadDB a => TeamId -> FormationId -> DB.Con a [(Entity Player, Maybe Types.FormationPitchPos)]
 getPlayersOrdered teamId formationId = do

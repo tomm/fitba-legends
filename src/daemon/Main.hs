@@ -18,6 +18,7 @@ import qualified Fitba.TransferMarket
 import qualified Fitba.DB as DB
 import qualified Fitba.Match
 import qualified Fitba.Config
+import qualified Fitba.Core
 
 data DaemonData = DaemonData {
   surnamePool :: [T.Text],
@@ -41,14 +42,17 @@ oncePerDay :: DB.MonadDB a => DaemonData -> UTCTime -> DB.Con a ()
 oncePerDay daemonData t = do
   liftIO $ putStrLn "NEW DAY!!!!!!!!!!!!!"
   Fitba.EndOfSeason.handlePossibleEndOfSeason
-  -- XXX update team formations
+  Fitba.Core.updateNpcTeamFormations
   transactionSave
+  liftIO $ putStrLn "New day work done."
 
 onStartup :: DB.MonadDB a => DaemonData -> DB.Con a ()
 onStartup daemonData = do
   liftIO $ putStrLn "First run!"
   Fitba.EndOfSeason.handlePossibleEndOfSeason
+  Fitba.Core.updateNpcTeamFormations
   transactionSave
+  liftIO $ putStrLn "First run done."
 
 loop :: DB.MonadDB a => DaemonData -> DB.Con a ()
 loop daemonData =

@@ -10,6 +10,7 @@ import qualified Database.Persist as P
 import qualified Data.Time.Clock
 import Data.Foldable (traverse_)
 import Data.IORef
+import qualified Data.List
 
 import qualified Fitba.Player
 import Fitba.Schema
@@ -18,7 +19,6 @@ import qualified Fitba.Types as Types
 import qualified Fitba.TransferListing as TransferListing
 import qualified Fitba.TransferBid as TransferBid
 import qualified Fitba.Core as Core
-import qualified Data.List
 
 decideTransferMarketBids :: MonadDB a => Con a ()
 decideTransferMarketBids = do
@@ -119,7 +119,7 @@ resolveTransferListing tl =
           starting11 <- getStarting11 (transferBidTeamId bid) (teamFormationId buyerTeam)
           if transferBidAmount bid < (transferListingMinPrice . P.entityVal) tl' then
             pure TransferBid.TeamRejected
-          else if (fromIntegral . playerSkill) player > averageSkill starting11 * 1.25 then
+          else if (fromIntegral . Fitba.Player.playerSkill) player > averageSkill starting11 * 1.25 then
             pure TransferBid.PlayerRejected
           else if teamMoney buyerTeam < transferBidAmount bid then
             pure TransferBid.InsufficientMoney
@@ -130,7 +130,7 @@ resolveTransferListing tl =
 
     -- XXX could avoid iterating over players twice by keeping count in fold
     averageSkill :: [Player] -> Float
-    averageSkill players = let totSkill = foldr (\a b -> playerSkill a + b) 0 players
+    averageSkill players = let totSkill = foldr (\a b -> Fitba.Player.playerSkill a + b) 0 players
                            in fromIntegral totSkill / fromIntegral (length players) :: Float
 
     getStarting11 :: MonadDB a => TeamId -> FormationId -> Con a [Player]
@@ -154,7 +154,7 @@ spawnNewTransferListings surnamePool = do
       key <- P.insert player
       P.insert $ TransferListing
         key
-        (truncate (overValue * 200000.0 * fromIntegral (playerSkill player)))
+        (truncate (overValue * 200000.0 * fromIntegral (Fitba.Player.playerSkill player)))
         (Data.Time.Clock.addUTCTime (60*60*24) now)
         Nothing
         Nothing
