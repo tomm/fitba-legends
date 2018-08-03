@@ -64,7 +64,7 @@ handleHttpError : Http.Error -> RootModel -> (RootModel, Cmd Msg)
 handleHttpError error model =
     case error of
         Http.BadStatus response -> 
-            if response.status.code == 403 then
+            if response.status.code == 401 then
                 (model , Navigation.load "/login")
             else
                 ({model | errorMsg = Just <| toString response}, Cmd.none)
